@@ -13,23 +13,24 @@
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
 <style>
 :root {
-  --bg:     #000000;
-  --bg2:    #141414;
-  --bg3:    #202020;
-  --bg4:    #2a2a2a;
+  --bg:     #000;
+  --bg2:    #111;
+  --bg3:    #1c1c1e;
+  --bg4:    #2c2c2e;
   --red:    #ff375f;
   --green:  #30d158;
   --cyan:   #32ade6;
   --orange: #ff9f0a;
-  --text:   #ffffff;
-  --dim:    #8e8e93;
-  --border: #272727;
+  --text:   #fff;
+  --dim:    #636366;
+  --dim2:   #48484a;
+  --sep:    rgba(255,255,255,.08);
 }
 * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
 html, body {
   height: 100%; height: 100dvh; overflow: hidden;
   background: var(--bg); color: var(--text);
-  font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Segoe UI', sans-serif;
+  font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'SF Pro Text', sans-serif;
   -webkit-font-smoothing: antialiased;
 }
 
@@ -37,7 +38,7 @@ html, body {
 .screen {
   position: fixed; inset: 0; display: flex; flex-direction: column;
   background: var(--bg); transform: translateX(100%);
-  transition: transform 0.3s cubic-bezier(0.4,0,0.2,1); z-index: 10;
+  transition: transform .3s cubic-bezier(.4,0,.2,1); z-index: 10;
 }
 .screen.active { transform: translateX(0); z-index: 20; }
 .screen.behind  { transform: translateX(-25%); z-index: 10; }
@@ -49,385 +50,275 @@ html, body {
   display: flex; align-items: center; gap: 8px;
   padding: 10px 16px;
   padding-top: max(14px, env(safe-area-inset-top));
-  background: var(--bg);
-  border-bottom: 0.5px solid var(--border);
-  flex-shrink: 0;
+  background: rgba(0,0,0,.85);
+  backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
+  border-bottom: 0.5px solid var(--sep); flex-shrink: 0;
 }
-.topbar h1 { font-size: 16px; font-weight: 700; flex: 1; }
-.topbar .tb-date { font-size: 11px; color: var(--dim); }
+.topbar h1 { font-size: 17px; font-weight: 700; flex: 1; letter-spacing: -.3px; }
 .icon-btn {
-  width: 32px; height: 32px; border: none; border-radius: 50%;
+  width: 30px; height: 30px; border: none; border-radius: 50%;
   display: flex; align-items: center; justify-content: center;
-  cursor: pointer; font-size: 14px; flex-shrink: 0;
+  cursor: pointer; font-size: 14px; flex-shrink: 0; background: var(--bg3); color: var(--text);
 }
-.icon-btn.gray { background: var(--bg3); color: var(--text); }
-.icon-btn.red  { background: rgba(255,55,95,.15); color: var(--red); }
+.icon-btn.red { background: rgba(255,55,95,.18); color: var(--red); }
 
 /* BOTTOM NAV */
 #bottom-nav {
   position: fixed; bottom: 0; left: 0; right: 0;
-  height: calc(50px + env(safe-area-inset-bottom));
+  height: calc(49px + env(safe-area-inset-bottom));
   padding-bottom: env(safe-area-inset-bottom);
-  background: rgba(0,0,0,.92);
-  backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
-  border-top: 0.5px solid var(--border);
-  display: flex; z-index: 50;
+  background: rgba(0,0,0,.88);
+  backdrop-filter: blur(24px); -webkit-backdrop-filter: blur(24px);
+  border-top: 0.5px solid var(--sep); display: flex; z-index: 50;
 }
 .nav-item {
   flex: 1; display: flex; flex-direction: column;
   align-items: center; justify-content: center;
-  gap: 2px; cursor: pointer; color: var(--dim);
-  transition: color .15s; user-select: none;
+  gap: 2px; cursor: pointer; color: var(--dim); transition: color .15s; user-select: none;
 }
 .nav-item.active { color: var(--orange); }
-.nav-icon  { font-size: 20px; line-height: 1; }
-.nav-label { font-size: 9px; font-weight: 600; letter-spacing: .02em; }
+.nav-icon  { font-size: 21px; line-height: 1; }
+.nav-label { font-size: 9px; font-weight: 600; }
 
-/* FILTER CHIPS */
+/* ====== HOME SCREEN ====== */
+#home-screen .scroll {
+  flex: 1; overflow-y: auto;
+  padding-bottom: calc(57px + env(safe-area-inset-bottom));
+}
+
+/* RINGS HERO */
+.rings-hero {
+  display: flex; align-items: center; gap: 20px;
+  padding: 20px 20px 16px;
+  border-bottom: 0.5px solid var(--sep);
+}
+.rings-svg-wrap { flex-shrink: 0; }
+.rings-legend { flex: 1; display: flex; flex-direction: column; gap: 10px; }
+.rl-row { display: flex; align-items: baseline; gap: 6px; }
+.rl-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; margin-bottom: 1px; }
+.rl-val { font-size: 26px; font-weight: 800; line-height: 1; font-variant-numeric: tabular-nums; letter-spacing: -.5px; }
+.rl-unit { font-size: 12px; font-weight: 600; opacity: .7; }
+.rl-label { font-size: 10px; font-weight: 600; letter-spacing: .04em; text-transform: uppercase; opacity: .55; margin-top: 1px; }
+
+/* FILTER */
 .filter-wrap {
-  display: flex; gap: 6px; padding: 8px 16px;
-  overflow-x: auto; flex-shrink: 0;
-  border-bottom: 0.5px solid var(--border); scrollbar-width: none;
+  display: flex; gap: 6px; padding: 10px 16px;
+  overflow-x: auto; flex-shrink: 0; border-bottom: 0.5px solid var(--sep); scrollbar-width: none;
 }
 .filter-wrap::-webkit-scrollbar { display: none; }
 .filter-chip {
   flex-shrink: 0; padding: 5px 12px; border-radius: 100px;
-  border: 0.5px solid var(--border); background: var(--bg2);
-  color: var(--dim); font-size: 11px; font-weight: 600;
-  cursor: pointer; transition: all .15s; user-select: none;
+  background: var(--bg3); color: var(--dim); font-size: 11px; font-weight: 600;
+  cursor: pointer; transition: all .15s; user-select: none; border: none;
 }
-.filter-chip.active { background: var(--orange); border-color: var(--orange); color: #000; }
+.filter-chip.active { background: var(--orange); color: #000; }
 
-/* HOME SCROLL */
-#home-screen .scroll {
-  flex: 1; overflow-y: auto; padding: 0;
-  padding-bottom: calc(58px + env(safe-area-inset-bottom));
-}
-
-/* SUMMARY STRIP */
-.summary-strip {
-  display: flex; padding: 14px 16px; gap: 0;
-  border-bottom: 0.5px solid var(--border);
-}
-.summary-col { flex: 1; }
-.summary-col + .summary-col { border-left: 0.5px solid var(--border); padding-left: 16px; }
-.summary-col .sc-label { font-size: 10px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; margin-bottom: 2px; }
-.summary-col .sc-val   { font-size: 22px; font-weight: 800; line-height: 1; font-variant-numeric: tabular-nums; }
-.summary-col .sc-unit  { font-size: 10px; color: var(--dim); margin-left: 2px; font-weight: 600; }
-.col-red   .sc-label { color: var(--red); }
-.col-red   .sc-val   { color: var(--red); }
-.col-green .sc-label { color: var(--green); }
-.col-green .sc-val   { color: var(--green); }
-.col-cyan  .sc-label { color: var(--cyan); }
-.col-cyan  .sc-val   { color: var(--cyan); }
-
-.list-header {
-  font-size: 10px; font-weight: 700; letter-spacing: .06em;
-  text-transform: uppercase; color: var(--dim);
-  padding: 12px 16px 6px;
-}
-.empty-state { text-align: center; padding: 40px 0; color: var(--dim); }
-.empty-state .ei { font-size: 36px; margin-bottom: 8px; }
-.empty-state p   { font-size: 13px; line-height: 1.7; }
-
-/* RIDE CARD */
-.ride-card {
-  display: flex; gap: 12px; padding: 12px 16px;
-  border-bottom: 0.5px solid var(--border);
-  cursor: pointer; align-items: center;
-  transition: background .1s;
-}
-.ride-card:active { background: var(--bg2); }
-.ride-thumb {
-  width: 72px; height: 52px; flex-shrink: 0;
-  border-radius: 8px; overflow: hidden; background: var(--bg2);
-  position: relative;
-}
-.ride-thumb .no-map {
-  position: absolute; inset: 0;
-  display: flex; align-items: center; justify-content: center;
-  font-size: 24px; color: var(--dim);
-}
-.ride-body { flex: 1; min-width: 0; }
-.ride-name { font-size: 14px; font-weight: 600; margin-bottom: 5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.ride-metrics { display: flex; gap: 10px; margin-bottom: 4px; }
-.rm { font-size: 12px; font-weight: 700; }
-.rm-red  { color: var(--red); }
-.rm-green{ color: var(--green); }
-.rm-cyan { color: var(--cyan); }
-.ride-sub { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
-.ride-date { font-size: 11px; color: var(--dim); }
-.ride-stars { font-size: 11px; color: var(--orange); letter-spacing: -1px; }
-.ride-rtags { display: flex; gap: 4px; flex-wrap: wrap; }
-.rtag-chip {
-  font-size: 10px; font-weight: 600;
-  padding: 1px 6px; border-radius: 100px;
-  background: var(--bg3); color: var(--dim);
-  border: 0.5px solid var(--border);
-}
-.ride-chevron { color: var(--bg4); font-size: 14px; flex-shrink: 0; }
-
-/* START BUTTON */
-.start-row { padding: 12px 16px; border-bottom: 0.5px solid var(--border); }
+/* START BTN */
+.start-row { padding: 12px 16px; border-bottom: 0.5px solid var(--sep); }
 .start-btn {
-  width: 100%; padding: 14px;
+  width: 100%; padding: 13px;
   background: var(--orange); color: #000;
   border: none; border-radius: 10px;
   font-size: 15px; font-weight: 700; cursor: pointer;
-  display: flex; align-items: center; justify-content: center; gap: 8px;
+  display: flex; align-items: center; justify-content: center; gap: 7px;
   transition: opacity .15s, transform .15s;
 }
 .start-btn:active { opacity: .85; transform: scale(.98); }
 
-/* TRACKING SCREEN */
+/* LIST HEADER */
+.list-header {
+  font-size: 11px; font-weight: 700; letter-spacing: .06em;
+  text-transform: uppercase; color: var(--dim);
+  padding: 12px 16px 6px;
+}
+.empty-state { text-align: center; padding: 48px 0; color: var(--dim); }
+.empty-state .ei { font-size: 36px; margin-bottom: 8px; }
+.empty-state p   { font-size: 13px; line-height: 1.7; }
+
+/* RIDE ROW */
+.ride-row {
+  display: flex; align-items: center;
+  padding: 11px 16px; border-bottom: 0.5px solid var(--sep);
+  cursor: pointer; gap: 12px; transition: background .1s;
+}
+.ride-row:active { background: var(--bg2); }
+.ride-row-accent { width: 3px; height: 36px; border-radius: 2px; background: var(--red); flex-shrink: 0; }
+.ride-row-body { flex: 1; min-width: 0; }
+.ride-row-name { font-size: 14px; font-weight: 600; margin-bottom: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ride-row-metrics { display: flex; gap: 10px; }
+.rrm { font-size: 12px; font-weight: 700; }
+.rrm-r { color: var(--red); }
+.rrm-g { color: var(--green); }
+.rrm-c { color: var(--cyan); }
+.ride-row-sub { display: flex; gap: 6px; align-items: center; margin-top: 3px; flex-wrap: wrap; }
+.ride-row-date  { font-size: 11px; color: var(--dim); }
+.ride-row-stars { font-size: 10px; color: var(--orange); letter-spacing: -1px; }
+.ride-row-tags  { display: flex; gap: 4px; }
+.ride-row-tag {
+  font-size: 10px; font-weight: 600; padding: 1px 6px;
+  border-radius: 100px; background: var(--bg3); color: var(--dim);
+}
+.ride-chevron { color: var(--dim2); font-size: 16px; flex-shrink: 0; }
+
+/* ====== TRACKING ====== */
 #track-map-wrap { flex: 1; position: relative; overflow: hidden; }
 #leaflet-track  { width: 100%; height: 100%; }
 .stats-overlay {
   position: absolute; top: 12px; left: 12px; right: 12px;
-  background: rgba(0,0,0,.82);
-  backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px);
-  border: 0.5px solid rgba(255,255,255,.12);
-  border-radius: 14px; padding: 14px 0;
+  background: rgba(0,0,0,.78); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px);
+  border: 0.5px solid var(--sep); border-radius: 14px; padding: 14px 0;
   display: flex; z-index: 500;
 }
-.stat-col { flex: 1; text-align: center; border-right: 0.5px solid rgba(255,255,255,.1); }
+.stat-col { flex: 1; text-align: center; border-right: 0.5px solid var(--sep); }
 .stat-col:last-child { border-right: none; }
 .stat-val  { font-size: 28px; font-weight: 800; font-variant-numeric: tabular-nums; line-height: 1; }
 .stat-unit { font-size: 10px; color: var(--dim); margin-top: 3px; }
-.rec-dot {
-  display: inline-block; width: 7px; height: 7px; border-radius: 50%;
-  background: var(--green); margin-right: 3px; animation: blink 1.4s infinite;
-}
+.rec-dot { display: inline-block; width: 7px; height: 7px; border-radius: 50%; background: var(--green); margin-right: 3px; animation: blink 1.4s infinite; }
 @keyframes blink { 0%,100%{opacity:1} 50%{opacity:.2} }
 .gps-badge {
   position: absolute; bottom: 12px; right: 12px;
-  background: rgba(0,0,0,.8); backdrop-filter: blur(8px);
-  border: 0.5px solid rgba(255,255,255,.1);
-  border-radius: 100px; padding: 5px 10px;
+  background: rgba(0,0,0,.75); backdrop-filter: blur(8px);
+  border: 0.5px solid var(--sep); border-radius: 100px; padding: 5px 10px;
   font-size: 11px; display: flex; align-items: center; gap: 5px; z-index: 500;
 }
 .gps-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--dim); flex-shrink: 0; }
 .track-footer {
-  padding: 12px 16px;
-  padding-bottom: max(12px, env(safe-area-inset-bottom));
-  background: var(--bg); border-top: 0.5px solid var(--border);
+  padding: 12px 16px; padding-bottom: max(12px, env(safe-area-inset-bottom));
+  background: var(--bg); border-top: 0.5px solid var(--sep);
   display: flex; gap: 10px; flex-shrink: 0;
 }
 .lm-btn {
-  flex: 1; padding: 13px; background: var(--bg2); color: var(--text);
-  border: 0.5px solid var(--border); border-radius: 10px;
-  font-size: 14px; font-weight: 600; cursor: pointer;
-  display: flex; align-items: center; justify-content: center; gap: 6px;
+  flex: 1; padding: 13px; background: var(--bg3); color: var(--text);
+  border: none; border-radius: 10px; font-size: 14px; font-weight: 600;
+  cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 6px;
   transition: background .15s;
 }
-.lm-btn:active { background: var(--bg3); }
+.lm-btn:active { background: var(--bg4); }
 .stop-btn {
-  flex: 1; padding: 13px; background: var(--red); color: white;
+  flex: 1; padding: 13px; background: var(--red); color: #fff;
   border: none; border-radius: 10px; font-size: 14px; font-weight: 700;
   cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 6px;
-  box-shadow: 0 4px 12px rgba(255,55,95,.35);
   transition: opacity .15s, transform .15s;
 }
 .stop-btn:active { opacity: .85; transform: scale(.98); }
 
-/* DETAIL SCREEN */
-#detail-screen .map-half { height: 36vh; flex-shrink: 0; position: relative; }
+/* ====== DETAIL SCREEN ====== */
+#detail-screen .map-half { height: 35vh; flex-shrink: 0; }
 #detail-screen .map-half .leaflet-container { width: 100%; height: 100%; }
 #detail-screen .info-scroll {
   flex: 1; overflow-y: auto; padding: 14px 16px;
   padding-bottom: max(20px, env(safe-area-inset-bottom));
 }
-.d-metrics { display: flex; gap: 0; margin-bottom: 16px; padding: 14px; background: var(--bg2); border-radius: 12px; }
-.d-metric { flex: 1; text-align: center; }
-.d-metric + .d-metric { border-left: 0.5px solid var(--border); }
+.d-metrics {
+  display: flex; gap: 0; margin-bottom: 16px;
+  border: 0.5px solid var(--sep); border-radius: 12px; overflow: hidden;
+}
+.d-metric { flex: 1; text-align: center; padding: 14px 8px; background: var(--bg2); }
+.d-metric + .d-metric { border-left: 0.5px solid var(--sep); }
 .d-metric .dv { font-size: 20px; font-weight: 800; line-height: 1; }
-.d-metric .dl { font-size: 10px; color: var(--dim); margin-top: 2px; }
-.lm-item {
-  display: flex; gap: 10px; padding: 12px 0;
-  border-bottom: 0.5px solid var(--border); align-items: flex-start;
-}
+.d-metric .dl { font-size: 10px; color: var(--dim); margin-top: 3px; }
+.lm-item { display: flex; gap: 10px; padding: 11px 0; border-bottom: 0.5px solid var(--sep); align-items: flex-start; }
 .lm-item:last-child { border-bottom: none; }
-.lm-thumb {
-  width: 60px; height: 60px; flex-shrink: 0;
-  border-radius: 8px; object-fit: cover; background: var(--bg2);
-}
-.lm-thumb.icon-thumb { display: flex; align-items: center; justify-content: center; font-size: 24px; }
-.tag-chip {
-  display: inline-block; font-size: 10px; font-weight: 700;
-  padding: 2px 8px; border-radius: 100px;
-  background: var(--orange); color: #000; margin-bottom: 4px;
-}
-.lm-note { font-size: 13px; color: var(--text); line-height: 1.5; }
+.lm-thumb { width: 58px; height: 58px; flex-shrink: 0; border-radius: 8px; object-fit: cover; background: var(--bg3); }
+.lm-thumb.icon-thumb { display: flex; align-items: center; justify-content: center; font-size: 22px; }
+.tag-chip { display: inline-block; font-size: 10px; font-weight: 700; padding: 2px 8px; border-radius: 100px; background: var(--orange); color: #000; margin-bottom: 4px; }
+.lm-note { font-size: 13px; line-height: 1.5; }
 .lm-time { font-size: 11px; color: var(--dim); margin-top: 3px; }
-.section-label {
-  font-size: 10px; font-weight: 700; letter-spacing: .06em;
-  text-transform: uppercase; color: var(--dim); margin-bottom: 10px;
-}
+.section-label { font-size: 10px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--dim); margin-bottom: 10px; }
 
-/* STATS SCREEN */
+/* ====== STATS SCREEN ====== */
 #stats-screen .scroll {
-  flex: 1; overflow-y: auto; padding: 0;
-  padding-bottom: calc(58px + env(safe-area-inset-bottom));
+  flex: 1; overflow-y: auto;
+  padding-bottom: calc(57px + env(safe-area-inset-bottom));
 }
-.stats-hero {
-  display: flex; padding: 16px; gap: 0;
-  border-bottom: 0.5px solid var(--border);
-}
-.stats-hero-col { flex: 1; }
-.stats-hero-col + .stats-hero-col { border-left: 0.5px solid var(--border); padding-left: 16px; }
-.shc-label { font-size: 10px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; margin-bottom: 2px; }
-.shc-val   { font-size: 28px; font-weight: 800; line-height: 1; font-variant-numeric: tabular-nums; }
-.shc-unit  { font-size: 11px; margin-left: 2px; opacity: .7; font-weight: 600; }
-.sh-red   .shc-label, .sh-red   .shc-val { color: var(--red); }
-.sh-green .shc-label, .sh-green .shc-val { color: var(--green); }
-.sh-cyan  .shc-label, .sh-cyan  .shc-val { color: var(--cyan); }
 
-.stats-section { padding: 16px; border-bottom: 0.5px solid var(--border); }
+/* Stats rings hero */
+.stats-rings-wrap {
+  display: flex; flex-direction: column; align-items: center;
+  padding: 24px 20px 20px; border-bottom: 0.5px solid var(--sep);
+  gap: 20px;
+}
+.stats-rings-row { display: flex; gap: 16px; }
+.stats-ring-col { flex: 1; display: flex; align-items: center; gap: 10px; }
+.sring-val { font-size: 28px; font-weight: 800; line-height: 1; font-variant-numeric: tabular-nums; }
+.sring-info .sl { font-size: 10px; font-weight: 700; letter-spacing: .05em; text-transform: uppercase; }
+.sring-info .su { font-size: 10px; color: var(--dim); margin-top: 1px; }
+
+.stats-section { padding: 16px; border-bottom: 0.5px solid var(--sep); }
 .stats-section-title { font-size: 10px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--dim); margin-bottom: 14px; }
-.month-row { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
-.month-label { font-size: 11px; color: var(--dim); width: 30px; text-align: right; flex-shrink: 0; }
-.month-bar-wrap { flex: 1; background: var(--bg2); border-radius: 4px; height: 16px; overflow: hidden; }
-.month-bar { height: 100%; background: var(--orange); border-radius: 4px; transition: width .6s ease; }
-.month-count { font-size: 11px; color: var(--dim); width: 20px; flex-shrink: 0; }
-.tag-row { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
-.tag-row-label { font-size: 12px; width: 56px; flex-shrink: 0; }
-.tag-row-bar-wrap { flex: 1; background: var(--bg2); border-radius: 4px; height: 12px; overflow: hidden; }
-.tag-row-bar { height: 100%; background: var(--cyan); border-radius: 4px; }
-.tag-row-count { font-size: 11px; color: var(--dim); width: 20px; flex-shrink: 0; }
+
+/* Chart bars */
+.chart-area { display: flex; align-items: flex-end; gap: 4px; height: 64px; margin-bottom: 8px; }
+.chart-bar-col { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 4px; }
+.chart-bar { width: 100%; background: var(--orange); border-radius: 3px 3px 0 0; min-height: 2px; transition: height .6s ease; }
+.chart-bar-label { font-size: 9px; color: var(--dim); text-align: center; }
+.chart-bar-count { font-size: 9px; color: var(--dim); }
+
+.tag-row { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+.tag-row-label { font-size: 12px; width: 52px; flex-shrink: 0; }
+.tag-row-bar-wrap { flex: 1; background: var(--bg3); border-radius: 3px; height: 12px; overflow: hidden; }
+.tag-row-bar { height: 100%; background: var(--cyan); border-radius: 3px; }
+.tag-row-count { font-size: 11px; color: var(--dim); width: 18px; flex-shrink: 0; text-align: right; }
+
 .top-stats-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
 .top-stat-card { background: var(--bg2); border-radius: 10px; padding: 12px; }
-.ts-label { font-size: 10px; color: var(--dim); margin-bottom: 3px; }
-.ts-val   { font-size: 16px; font-weight: 800; }
+.ts-label { font-size: 10px; color: var(--dim); margin-bottom: 4px; }
+.ts-val   { font-size: 17px; font-weight: 800; }
 .ts-sub   { font-size: 10px; color: var(--dim); margin-top: 2px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
-/* ALBUM SCREEN */
+/* ====== ALBUM ====== */
 #album-screen .scroll {
-  flex: 1; overflow-y: auto; padding: 8px;
-  padding-bottom: calc(58px + env(safe-area-inset-bottom));
+  flex: 1; overflow-y: auto; padding: 6px;
+  padding-bottom: calc(57px + env(safe-area-inset-bottom));
 }
-.album-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
-.album-item { border-radius: 10px; overflow: hidden; position: relative; aspect-ratio: 1; background: var(--bg2); cursor: pointer; }
+.album-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; }
+.album-item { border-radius: 8px; overflow: hidden; position: relative; aspect-ratio: 1; background: var(--bg3); cursor: pointer; }
 .album-item img { width: 100%; height: 100%; object-fit: cover; display: block; }
-.album-meta {
-  position: absolute; bottom: 0; left: 0; right: 0; padding: 6px 8px;
-  background: linear-gradient(transparent, rgba(0,0,0,.8));
-  font-size: 10px; color: white; font-weight: 600;
-}
-.album-tag {
-  display: inline-block; background: var(--orange); color: #000;
-  font-size: 9px; font-weight: 700; padding: 1px 5px; border-radius: 3px; margin-bottom: 2px;
-}
+.album-meta { position: absolute; bottom: 0; left: 0; right: 0; padding: 6px 8px; background: linear-gradient(transparent, rgba(0,0,0,.82)); font-size: 10px; color: #fff; font-weight: 600; }
+.album-tag { display: inline-block; background: var(--orange); color: #000; font-size: 9px; font-weight: 700; padding: 1px 5px; border-radius: 3px; margin-bottom: 2px; }
 
 /* LIGHTBOX */
-#lightbox {
-  position: fixed; inset: 0; background: rgba(0,0,0,.95);
-  z-index: 300; display: flex; flex-direction: column;
-  align-items: center; justify-content: center;
-  opacity: 0; pointer-events: none; transition: opacity .2s;
-}
+#lightbox { position: fixed; inset: 0; background: rgba(0,0,0,.96); z-index: 300; display: flex; flex-direction: column; align-items: center; justify-content: center; opacity: 0; pointer-events: none; transition: opacity .2s; }
 #lightbox.open { opacity: 1; pointer-events: all; }
-#lightbox img { max-width: 100%; max-height: 75vh; object-fit: contain; border-radius: 8px; }
+#lightbox img { max-width: 100%; max-height: 78vh; object-fit: contain; border-radius: 6px; }
 #lightbox .lb-info { margin-top: 12px; text-align: center; }
 #lightbox .lb-ride { font-size: 13px; color: var(--dim); }
-#lightbox .lb-tag  { font-size: 12px; color: var(--orange); font-weight: 700; margin-top: 3px; }
-#lightbox .lb-close {
-  position: absolute; top: max(14px, env(safe-area-inset-top)); right: 14px;
-  width: 32px; height: 32px; background: var(--bg3);
-  border: none; border-radius: 50%; color: white; font-size: 16px;
-  cursor: pointer; display: flex; align-items: center; justify-content: center;
-}
+#lightbox .lb-tag  { font-size: 12px; color: var(--orange); font-weight: 700; margin-bottom: 3px; }
+#lightbox .lb-close { position: absolute; top: max(14px,env(safe-area-inset-top)); right: 14px; width: 30px; height: 30px; background: var(--bg3); border: none; border-radius: 50%; color: #fff; font-size: 15px; cursor: pointer; display: flex; align-items: center; justify-content: center; }
 
 /* MODALS */
-.overlay {
-  position: fixed; inset: 0; background: rgba(0,0,0,.75);
-  z-index: 200; display: flex; align-items: flex-end;
-  opacity: 0; pointer-events: none; transition: opacity .2s;
-}
+.overlay { position: fixed; inset: 0; background: rgba(0,0,0,.78); z-index: 200; display: flex; align-items: flex-end; opacity: 0; pointer-events: none; transition: opacity .2s; }
 .overlay.open { opacity: 1; pointer-events: all; }
-.sheet {
-  width: 100%; background: var(--bg2);
-  border-radius: 18px 18px 0 0;
-  padding: 14px 18px max(18px, env(safe-area-inset-bottom));
-  transform: translateY(100%);
-  transition: transform .28s cubic-bezier(0.4,0,0.2,1);
-}
+.sheet { width: 100%; background: var(--bg3); border-radius: 16px 16px 0 0; padding: 12px 18px max(18px,env(safe-area-inset-bottom)); transform: translateY(100%); transition: transform .28s cubic-bezier(.4,0,.2,1); }
 .overlay.open .sheet { transform: translateY(0); }
-.sheet-handle { width: 32px; height: 3px; background: var(--bg4); border-radius: 2px; margin: 0 auto 16px; }
+.sheet-handle { width: 30px; height: 3px; background: var(--bg4); border-radius: 2px; margin: 0 auto 14px; }
 .sheet h3 { font-size: 16px; font-weight: 700; margin-bottom: 14px; }
-.photo-area {
-  width: 100%; height: 130px; background: var(--bg3);
-  border: 1.5px dashed var(--bg4); border-radius: 10px;
-  position: relative; overflow: hidden;
-  display: flex; flex-direction: column;
-  align-items: center; justify-content: center;
-  gap: 5px; color: var(--dim); margin-bottom: 12px; cursor: pointer;
-}
+.photo-area { width: 100%; height: 120px; background: var(--bg4); border: 1.5px dashed var(--dim2); border-radius: 10px; position: relative; overflow: hidden; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 5px; color: var(--dim); margin-bottom: 12px; cursor: pointer; }
 .photo-area img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
-.photo-area .ph-icon { font-size: 26px; }
+.photo-area .ph-icon { font-size: 24px; }
 .photo-area .ph-text { font-size: 12px; }
 .photo-area input[type=file] { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
 .tags-wrap { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 12px; }
-.tag-btn {
-  padding: 7px 12px; border-radius: 100px;
-  border: 0.5px solid var(--border); background: var(--bg3);
-  color: var(--dim); font-size: 12px; cursor: pointer;
-  transition: all .15s; user-select: none;
-}
+.tag-btn { padding: 6px 12px; border-radius: 100px; border: 0.5px solid var(--dim2); background: var(--bg4); color: var(--dim); font-size: 12px; cursor: pointer; transition: all .15s; user-select: none; }
 .tag-btn.on { background: var(--orange); border-color: var(--orange); color: #000; font-weight: 700; }
-.note-ta {
-  width: 100%; background: var(--bg3); border: 0.5px solid var(--border);
-  border-radius: 10px; color: var(--text); padding: 11px 12px; font-size: 14px;
-  resize: none; font-family: inherit; outline: none;
-  margin-bottom: 12px; transition: border-color .15s;
-}
+.note-ta { width: 100%; background: var(--bg4); border: 0.5px solid var(--dim2); border-radius: 10px; color: var(--text); padding: 10px 12px; font-size: 14px; resize: none; font-family: inherit; outline: none; margin-bottom: 12px; transition: border-color .15s; }
 .note-ta:focus { border-color: var(--orange); }
-.btn-primary {
-  width: 100%; padding: 14px; background: var(--orange); color: #000;
-  border: none; border-radius: 10px; font-size: 15px; font-weight: 700;
-  cursor: pointer; transition: opacity .15s, transform .15s;
-}
+.btn-primary { width: 100%; padding: 13px; background: var(--orange); color: #000; border: none; border-radius: 10px; font-size: 15px; font-weight: 700; cursor: pointer; transition: opacity .15s, transform .15s; }
 .btn-primary:active { opacity: .85; transform: scale(.98); }
 .confirm-row { display: flex; gap: 8px; margin-top: 4px; }
-.btn-ghost {
-  flex: 1; padding: 13px; background: var(--bg3); color: var(--text);
-  border: none; border-radius: 10px; font-size: 14px; font-weight: 600; cursor: pointer;
-}
-.btn-red {
-  flex: 1; padding: 13px; background: var(--red); color: white;
-  border: none; border-radius: 10px; font-size: 14px; font-weight: 700; cursor: pointer;
-}
+.btn-ghost { flex: 1; padding: 13px; background: var(--bg4); color: var(--text); border: none; border-radius: 10px; font-size: 14px; font-weight: 600; cursor: pointer; }
+.btn-red   { flex: 1; padding: 13px; background: var(--red); color: #fff; border: none; border-radius: 10px; font-size: 14px; font-weight: 700; cursor: pointer; }
 .confirm-msg { font-size: 13px; color: var(--dim); margin-bottom: 14px; }
 
-/* STARS */
 .star-row { display: flex; gap: 8px; margin-bottom: 14px; }
-.star-btn {
-  font-size: 28px; cursor: pointer;
-  filter: grayscale(1) opacity(.25);
-  transition: filter .15s, transform .1s; user-select: none;
-}
+.star-btn { font-size: 30px; cursor: pointer; filter: grayscale(1) opacity(.25); transition: filter .15s, transform .1s; user-select: none; }
 .star-btn.on { filter: none; }
 .star-btn:active { transform: scale(1.2); }
 
-/* ROUTE TAG BUTTONS */
-.rtag-btn {
-  padding: 7px 12px; border-radius: 100px;
-  border: 0.5px solid var(--border); background: var(--bg3);
-  color: var(--dim); font-size: 12px; cursor: pointer;
-  transition: all .15s; user-select: none;
-}
+.rtag-btn { padding: 6px 12px; border-radius: 100px; border: 0.5px solid var(--dim2); background: var(--bg4); color: var(--dim); font-size: 12px; cursor: pointer; transition: all .15s; user-select: none; }
 .rtag-btn.on { background: var(--cyan); border-color: var(--cyan); color: #000; font-weight: 700; }
 
-/* TOAST */
-.toast {
-  position: fixed; bottom: calc(58px + env(safe-area-inset-bottom));
-  left: 50%; transform: translateX(-50%) translateY(16px);
-  background: rgba(30,30,30,.96); color: white;
-  border: 0.5px solid rgba(255,255,255,.1);
-  padding: 9px 18px; border-radius: 100px;
-  font-size: 13px; font-weight: 500; z-index: 999;
-  opacity: 0; transition: opacity .2s, transform .2s;
-  white-space: nowrap; pointer-events: none;
-}
+.toast { position: fixed; bottom: calc(57px + env(safe-area-inset-bottom)); left: 50%; transform: translateX(-50%) translateY(14px); background: rgba(28,28,30,.96); color: #fff; border: 0.5px solid var(--sep); padding: 8px 16px; border-radius: 100px; font-size: 13px; font-weight: 500; z-index: 999; opacity: 0; transition: opacity .2s, transform .2s; white-space: nowrap; pointer-events: none; }
 .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
 ::-webkit-scrollbar { width: 0; }
 </style>
@@ -438,34 +329,53 @@ html, body {
 <div id="home-screen" class="screen active">
   <div class="topbar">
     <h1>重機日誌</h1>
-    <span class="tb-date" id="today-date"></span>
-  </div>
-  <div class="filter-wrap">
-    <div class="filter-chip active" onclick="App.setFilter(this,'')">全部</div>
-    <div class="filter-chip" onclick="App.setFilter(this,'山路')">山路</div>
-    <div class="filter-chip" onclick="App.setFilter(this,'海岸')">海岸</div>
-    <div class="filter-chip" onclick="App.setFilter(this,'市區')">市區</div>
-    <div class="filter-chip" onclick="App.setFilter(this,'郊遊')">郊遊</div>
-    <div class="filter-chip" onclick="App.setFilter(this,'跑山')">跑山</div>
-  </div>
-  <div class="summary-strip" id="home-summary">
-    <div class="summary-col col-red">
-      <div class="sc-label">距離</div>
-      <div><span class="sc-val" id="ss-km">0</span><span class="sc-unit">km</span></div>
-    </div>
-    <div class="summary-col col-green">
-      <div class="sc-label">時數</div>
-      <div><span class="sc-val" id="ss-hr">0</span><span class="sc-unit">hr</span></div>
-    </div>
-    <div class="summary-col col-cyan">
-      <div class="sc-label">次數</div>
-      <div><span class="sc-val" id="ss-ct">0</span><span class="sc-unit">次</span></div>
-    </div>
+    <span style="font-size:12px;color:var(--dim)" id="today-date"></span>
   </div>
   <div class="scroll">
-    <div class="start-row">
-      <button class="start-btn" onclick="App.startRide()">▶ 開始新路線</button>
+    <!-- Rings hero -->
+    <div class="rings-hero">
+      <div class="rings-svg-wrap">
+        <svg id="rings-svg" width="130" height="130" viewBox="0 0 130 130">
+          <!-- Track rings -->
+          <circle cx="65" cy="65" r="56" fill="none" stroke="#2a0008" stroke-width="14"/>
+          <circle cx="65" cy="65" r="56" fill="none" stroke="var(--red)" stroke-width="14" stroke-linecap="round" transform="rotate(-90 65 65)" id="ring-r" stroke-dasharray="351.86" stroke-dashoffset="351.86"/>
+          <circle cx="65" cy="65" r="39" fill="none" stroke="#002a0a" stroke-width="14"/>
+          <circle cx="65" cy="65" r="39" fill="none" stroke="var(--green)" stroke-width="14" stroke-linecap="round" transform="rotate(-90 65 65)" id="ring-g" stroke-dasharray="244.92" stroke-dashoffset="244.92"/>
+          <circle cx="65" cy="65" r="22" fill="none" stroke="#001a2a" stroke-width="14"/>
+          <circle cx="65" cy="65" r="22" fill="none" stroke="var(--cyan)" stroke-width="14" stroke-linecap="round" transform="rotate(-90 65 65)" id="ring-c" stroke-dasharray="138.23" stroke-dashoffset="138.23"/>
+        </svg>
+      </div>
+      <div class="rings-legend">
+        <div>
+          <div class="rl-row"><span class="rl-dot" style="background:var(--red)"></span><span class="rl-val" style="color:var(--red)" id="rl-km">0</span><span class="rl-unit" style="color:var(--red)">km</span></div>
+          <div class="rl-label">距離</div>
+        </div>
+        <div>
+          <div class="rl-row"><span class="rl-dot" style="background:var(--green)"></span><span class="rl-val" style="color:var(--green)" id="rl-hr">0</span><span class="rl-unit" style="color:var(--green)">hr</span></div>
+          <div class="rl-label">時數</div>
+        </div>
+        <div>
+          <div class="rl-row"><span class="rl-dot" style="background:var(--cyan)"></span><span class="rl-val" style="color:var(--cyan)" id="rl-ct">0</span><span class="rl-unit" style="color:var(--cyan)">次</span></div>
+          <div class="rl-label">騎乘</div>
+        </div>
+      </div>
     </div>
+
+    <!-- Filter -->
+    <div class="filter-wrap">
+      <div class="filter-chip active" onclick="App.setFilter(this,'')">全部</div>
+      <div class="filter-chip" onclick="App.setFilter(this,'山路')">山路</div>
+      <div class="filter-chip" onclick="App.setFilter(this,'海岸')">海岸</div>
+      <div class="filter-chip" onclick="App.setFilter(this,'市區')">市區</div>
+      <div class="filter-chip" onclick="App.setFilter(this,'郊遊')">郊遊</div>
+      <div class="filter-chip" onclick="App.setFilter(this,'跑山')">跑山</div>
+    </div>
+
+    <!-- Start -->
+    <div class="start-row">
+      <button class="start-btn" onclick="App.startRide()">▶&ensp;開始新路線</button>
+    </div>
+
     <div class="list-header">騎乘記錄</div>
     <div id="rides-list"></div>
   </div>
@@ -475,10 +385,34 @@ html, body {
 <div id="stats-screen" class="screen">
   <div class="topbar"><h1>統計</h1></div>
   <div class="scroll">
-    <div class="stats-hero" id="stats-hero"></div>
+    <div class="stats-rings-wrap" id="stats-rings-wrap">
+      <svg id="stats-rings-svg" width="160" height="160" viewBox="0 0 160 160">
+        <circle cx="80" cy="80" r="68" fill="none" stroke="#2a0008" stroke-width="16"/>
+        <circle cx="80" cy="80" r="68" fill="none" stroke="var(--red)" stroke-width="16" stroke-linecap="round" transform="rotate(-90 80 80)" id="sr-r" stroke-dasharray="427.26" stroke-dashoffset="427.26"/>
+        <circle cx="80" cy="80" r="48" fill="none" stroke="#002a0a" stroke-width="16"/>
+        <circle cx="80" cy="80" r="48" fill="none" stroke="var(--green)" stroke-width="16" stroke-linecap="round" transform="rotate(-90 80 80)" id="sr-g" stroke-dasharray="301.59" stroke-dashoffset="301.59"/>
+        <circle cx="80" cy="80" r="28" fill="none" stroke="#001a2a" stroke-width="16"/>
+        <circle cx="80" cy="80" r="28" fill="none" stroke="var(--cyan)" stroke-width="16" stroke-linecap="round" transform="rotate(-90 80 80)" id="sr-c" stroke-dasharray="175.93" stroke-dashoffset="175.93"/>
+      </svg>
+      <div class="stats-rings-row">
+        <div class="stats-ring-col">
+          <div style="width:10px;height:10px;border-radius:50%;background:var(--red);flex-shrink:0"></div>
+          <div><div class="sring-val" style="color:var(--red)" id="sr-km-val">0</div><div class="sring-info"><div class="sl" style="color:var(--red)">距離</div><div class="su">公里</div></div></div>
+        </div>
+        <div class="stats-ring-col">
+          <div style="width:10px;height:10px;border-radius:50%;background:var(--green);flex-shrink:0"></div>
+          <div><div class="sring-val" style="color:var(--green)" id="sr-hr-val">0</div><div class="sring-info"><div class="sl" style="color:var(--green)">時數</div><div class="su">小時</div></div></div>
+        </div>
+        <div class="stats-ring-col">
+          <div style="width:10px;height:10px;border-radius:50%;background:var(--cyan);flex-shrink:0"></div>
+          <div><div class="sring-val" style="color:var(--cyan)" id="sr-ct-val">0</div><div class="sring-info"><div class="sl" style="color:var(--cyan)">次數</div><div class="su">騎乘</div></div></div>
+        </div>
+      </div>
+    </div>
+
     <div class="stats-section">
       <div class="stats-section-title">近 6 個月</div>
-      <div id="month-chart"></div>
+      <div class="chart-area" id="month-chart"></div>
     </div>
     <div class="stats-section">
       <div class="stats-section-title">路線類型</div>
@@ -504,23 +438,11 @@ html, body {
   <div id="track-map-wrap">
     <div id="leaflet-track"></div>
     <div class="stats-overlay">
-      <div class="stat-col">
-        <div class="stat-val" id="sv-speed">0</div>
-        <div class="stat-unit">km/h</div>
-      </div>
-      <div class="stat-col">
-        <div class="stat-val" id="sv-dist">0.0</div>
-        <div class="stat-unit">公里</div>
-      </div>
-      <div class="stat-col">
-        <div class="stat-val" id="sv-time">00:00</div>
-        <div class="stat-unit"><span class="rec-dot"></span>記錄中</div>
-      </div>
+      <div class="stat-col"><div class="stat-val" id="sv-speed">0</div><div class="stat-unit">km/h</div></div>
+      <div class="stat-col"><div class="stat-val" id="sv-dist">0.0</div><div class="stat-unit">公里</div></div>
+      <div class="stat-col"><div class="stat-val" id="sv-time">00:00</div><div class="stat-unit"><span class="rec-dot"></span>記錄中</div></div>
     </div>
-    <div class="gps-badge">
-      <span class="gps-dot" id="gps-dot"></span>
-      <span id="gps-text">取得 GPS 中…</span>
-    </div>
+    <div class="gps-badge"><span class="gps-dot" id="gps-dot"></span><span id="gps-text">取得 GPS 中…</span></div>
   </div>
   <div class="track-footer">
     <button class="lm-btn" onclick="App.openLandmarkModal()">📍 地標</button>
@@ -531,15 +453,15 @@ html, body {
 <!-- DETAIL SCREEN -->
 <div id="detail-screen" class="screen">
   <div class="topbar">
-    <button class="icon-btn gray" onclick="App.goHome()">←</button>
+    <button class="icon-btn" onclick="App.goHome()">←</button>
     <h1 id="detail-title" style="font-size:15px">路線</h1>
-    <button class="icon-btn gray" onclick="App.shareRide()" style="font-size:16px">↑</button>
-    <button class="icon-btn red"  onclick="App.deleteRide()">✕</button>
+    <button class="icon-btn" onclick="App.shareRide()" style="font-size:16px">↑</button>
+    <button class="icon-btn red" onclick="App.deleteRide()">✕</button>
   </div>
   <div class="map-half"><div id="leaflet-detail" style="width:100%;height:100%"></div></div>
   <div class="info-scroll">
     <div id="detail-header"></div>
-    <div class="d-metrics" id="d-metrics">
+    <div class="d-metrics">
       <div class="d-metric"><div class="dv" id="d-dist" style="color:var(--red)">-</div><div class="dl">公里</div></div>
       <div class="d-metric"><div class="dv" id="d-dur"  style="color:var(--green)">-</div><div class="dl">時長</div></div>
       <div class="d-metric"><div class="dv" id="d-lm"   style="color:var(--cyan)">-</div><div class="dl">地標</div></div>
@@ -552,12 +474,10 @@ html, body {
 <!-- MODAL: Landmark -->
 <div class="overlay" id="lm-overlay" onclick="App.overlayClick(event,'lm-overlay')">
   <div class="sheet">
-    <div class="sheet-handle"></div>
-    <h3>新增地標</h3>
+    <div class="sheet-handle"></div><h3>新增地標</h3>
     <div class="photo-area" id="photo-area">
       <input type="file" accept="image/*" capture="environment" id="photo-input" onchange="App.onPhotoChange(this)">
-      <div class="ph-icon">📷</div>
-      <div class="ph-text">拍照 / 選圖片</div>
+      <div class="ph-icon">📷</div><div class="ph-text">拍照 / 選圖片</div>
     </div>
     <div class="tags-wrap">
       <div class="tag-btn" onclick="App.toggleTag(this,'美食')">🍜 美食</div>
@@ -572,24 +492,22 @@ html, body {
   </div>
 </div>
 
-<!-- MODAL: Stop Confirm -->
+<!-- MODAL: Stop -->
 <div class="overlay" id="stop-overlay" onclick="App.overlayClick(event,'stop-overlay')">
   <div class="sheet">
-    <div class="sheet-handle"></div>
-    <h3>結束這段路線？</h3>
+    <div class="sheet-handle"></div><h3>結束這段路線？</h3>
     <p class="confirm-msg">目前已騎 <span id="confirm-dist">0.0</span> 公里</p>
     <div class="confirm-row">
       <button class="btn-ghost" onclick="App.closeOverlay('stop-overlay')">繼續騎</button>
-      <button class="btn-red"   onclick="App.stopRide()">結束路線</button>
+      <button class="btn-red" onclick="App.stopRide()">結束路線</button>
     </div>
   </div>
 </div>
 
-<!-- MODAL: Rate Ride -->
+<!-- MODAL: Rate -->
 <div class="overlay" id="rate-overlay">
   <div class="sheet">
-    <div class="sheet-handle"></div>
-    <h3>這段路線如何？</h3>
+    <div class="sheet-handle"></div><h3>這段路線如何？</h3>
     <div class="star-row" id="star-row">
       <span class="star-btn" onclick="App.setRating(1)">★</span>
       <span class="star-btn" onclick="App.setRating(2)">★</span>
@@ -613,106 +531,117 @@ html, body {
 <div id="lightbox" onclick="App.closeLightbox()">
   <button class="lb-close" onclick="event.stopPropagation();App.closeLightbox()">✕</button>
   <img id="lb-img" src="" alt="">
-  <div class="lb-info">
-    <div class="lb-tag" id="lb-tag"></div>
-    <div class="lb-ride" id="lb-ride"></div>
-  </div>
+  <div class="lb-info"><div class="lb-tag" id="lb-tag"></div><div class="lb-ride" id="lb-ride"></div></div>
 </div>
 
 <div class="toast" id="toast"></div>
 
-<!-- Bottom Nav -->
 <nav id="bottom-nav">
   <div class="nav-item active" data-tab="home" onclick="App.goTab('home')">
-    <div class="nav-icon">🏍</div>
-    <div class="nav-label">首頁</div>
+    <div class="nav-icon">🏍</div><div class="nav-label">首頁</div>
   </div>
   <div class="nav-item" data-tab="stats" onclick="App.goTab('stats')">
-    <div class="nav-icon">📊</div>
-    <div class="nav-label">統計</div>
+    <div class="nav-icon">📊</div><div class="nav-label">統計</div>
   </div>
   <div class="nav-item" data-tab="album" onclick="App.goTab('album')">
-    <div class="nav-icon">🖼</div>
-    <div class="nav-label">相簿</div>
+    <div class="nav-icon">🖼</div><div class="nav-label">相簿</div>
   </div>
 </nav>
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
 const App = {
-  rides: [], activeRide: null,
-  watchId: null, timer: null,
-  trackMap: null, trackLine: null, trackDot: null, detailMap: null,
-  selectedTag: null, photoData: null, viewingId: null,
-  pendingRateId: null, pendingRating: 0, pendingRouteTags: [],
-  activeFilter: '', _albumPhotos: [],
+  rides:[], activeRide:null,
+  watchId:null, timer:null,
+  trackMap:null, trackLine:null, trackDot:null, detailMap:null,
+  selectedTag:null, photoData:null, viewingId:null,
+  pendingRateId:null, pendingRating:0, pendingRouteTags:[],
+  activeFilter:'', _albumPhotos:[],
 
   init() {
-    try { this.rides = JSON.parse(localStorage.getItem('mj_rides') || '[]'); } catch(e) { this.rides = []; }
-    const d = new Date();
-    document.getElementById('today-date').textContent = d.toLocaleDateString('zh-TW',{month:'short',day:'numeric'});
+    try{this.rides=JSON.parse(localStorage.getItem('mj_rides')||'[]');}catch(e){this.rides=[];}
+    const d=new Date();
+    document.getElementById('today-date').textContent=d.toLocaleDateString('zh-TW',{month:'numeric',day:'numeric'});
     this.renderHomeList();
-    this.updateSummaryStrip();
-    if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(()=>{});
+    this.updateRings();
+    if('serviceWorker'in navigator)navigator.serviceWorker.register('sw.js').catch(()=>{});
   },
 
-  updateSummaryStrip() {
-    const km = this.rides.reduce((s,r)=>s+(r.distance||0),0);
-    const hr = this.rides.reduce((s,r)=>s+((r.endTime||r.startTime)-r.startTime),0)/3600000;
-    document.getElementById('ss-km').textContent = km.toFixed(0);
-    document.getElementById('ss-hr').textContent = hr.toFixed(1);
-    document.getElementById('ss-ct').textContent = this.rides.length;
+  updateRings() {
+    const km=this.rides.reduce((s,r)=>s+(r.distance||0),0);
+    const hr=this.rides.reduce((s,r)=>s+((r.endTime||r.startTime)-r.startTime),0)/3600000;
+    const ct=this.rides.length;
+    // Update legend text
+    const rlKm=document.getElementById('rl-km');
+    const rlHr=document.getElementById('rl-hr');
+    const rlCt=document.getElementById('rl-ct');
+    if(rlKm){rlKm.textContent=km.toFixed(0);rlHr.textContent=hr.toFixed(1);rlCt.textContent=ct;}
+    // Animate rings: use sqrt for visual balance
+    const maxKm=Math.max(km,1), maxHr=Math.max(hr,1), maxCt=Math.max(ct,1);
+    const pKm=Math.min(km/Math.max(km*1.2,100),1);
+    const pHr=Math.min(hr/Math.max(hr*1.2,10),1);
+    const pCt=Math.min(ct/Math.max(ct*1.2,10),1);
+    setTimeout(()=>{
+      const rr=document.getElementById('ring-r');
+      const rg=document.getElementById('ring-g');
+      const rc=document.getElementById('ring-c');
+      if(rr){rr.style.strokeDashoffset=351.86*(1-pKm);rg.style.strokeDashoffset=244.92*(1-pHr);rc.style.strokeDashoffset=138.23*(1-pCt);}
+      // Stats page rings
+      const srr=document.getElementById('sr-r');
+      const srg=document.getElementById('sr-g');
+      const src=document.getElementById('sr-c');
+      if(srr){srr.style.strokeDashoffset=427.26*(1-pKm);srg.style.strokeDashoffset=301.59*(1-pHr);src.style.strokeDashoffset=175.93*(1-pCt);}
+    },100);
   },
 
   showScreen(id) {
-    const prev = document.querySelector('.screen.active');
-    document.querySelectorAll('.screen').forEach(s => s.classList.remove('active','behind'));
-    if (prev && prev.id !== id) prev.classList.add('behind');
+    const prev=document.querySelector('.screen.active');
+    document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active','behind'));
+    if(prev&&prev.id!==id)prev.classList.add('behind');
     document.getElementById(id).classList.add('active');
   },
 
   goTab(tab) {
-    const ids = { home:'home-screen', stats:'stats-screen', album:'album-screen' };
-    document.querySelectorAll('.screen').forEach(s => s.classList.remove('active','behind'));
+    const ids={home:'home-screen',stats:'stats-screen',album:'album-screen'};
+    document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active','behind'));
     document.getElementById(ids[tab]).classList.add('active');
-    document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+    document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
     document.querySelector(`.nav-item[data-tab="${tab}"]`).classList.add('active');
-    if (tab === 'stats') this.renderStats();
-    if (tab === 'album') this.renderAlbum();
+    if(tab==='stats')this.renderStats();
+    if(tab==='album')this.renderAlbum();
   },
 
   goHome() {
-    if (this.detailMap) { this.detailMap.remove(); this.detailMap = null; }
-    this.renderHomeList(); this.updateSummaryStrip();
-    this.goTab('home');
+    if(this.detailMap){this.detailMap.remove();this.detailMap=null;}
+    this.renderHomeList(); this.updateRings(); this.goTab('home');
   },
 
   startRide() {
-    this.activeRide = {
-      id: Date.now(), name: '路線 '+(this.rides.length+1),
-      date: Date.now(), startTime: Date.now(), endTime: null,
-      points: [], landmarks: [], distance: 0,
-      rating: 0, note: '', routeTags: [], weather: null,
+    this.activeRide={
+      id:Date.now(),name:'路線 '+(this.rides.length+1),
+      date:Date.now(),startTime:Date.now(),endTime:null,
+      points:[],landmarks:[],distance:0,
+      rating:0,note:'',routeTags:[],weather:null,
     };
     this.showScreen('track-screen');
-    setTimeout(() => this.initTrackMap(), 150);
+    setTimeout(()=>this.initTrackMap(),150);
   },
 
   initTrackMap() {
-    if (!this.trackMap) {
-      this.trackMap = L.map('leaflet-track',{zoomControl:false,attributionControl:false});
+    if(!this.trackMap){
+      this.trackMap=L.map('leaflet-track',{zoomControl:false,attributionControl:false});
       L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19}).addTo(this.trackMap);
     }
-    if (this.trackLine){this.trackLine.remove();this.trackLine=null;}
-    if (this.trackDot) {this.trackDot.remove(); this.trackDot=null;}
-    this.trackLine = L.polyline([],{color:'#ff375f',weight:5,opacity:.9}).addTo(this.trackMap);
-    this.startGPS(); this.startTimer();
+    if(this.trackLine){this.trackLine.remove();this.trackLine=null;}
+    if(this.trackDot){this.trackDot.remove();this.trackDot=null;}
+    this.trackLine=L.polyline([],{color:'#ff375f',weight:5,opacity:.9}).addTo(this.trackMap);
+    this.startGPS();this.startTimer();
   },
 
   startGPS() {
-    if (!navigator.geolocation){this.setGPSStatus('error','GPS 不支援');return;}
+    if(!navigator.geolocation){this.setGPSStatus('error','GPS 不支援');return;}
     this.setGPSStatus('waiting','取得 GPS 中…');
-    this.watchId = navigator.geolocation.watchPosition(
+    this.watchId=navigator.geolocation.watchPosition(
       pos=>this.onPosition(pos),
       ()=>this.setGPSStatus('error','GPS 錯誤'),
       {enableHighAccuracy:true,maximumAge:3000,timeout:15000}
@@ -720,101 +649,97 @@ const App = {
   },
 
   onPosition(pos) {
-    const {latitude:lat,longitude:lng,speed,accuracy}=pos.coords;
+    const{latitude:lat,longitude:lng,speed,accuracy}=pos.coords;
     this.setGPSStatus('ok',`±${Math.round(accuracy)}m`);
     const lastPt=this.activeRide.points.at(-1);
-    if (!lastPt&&!this.activeRide.weather) this.fetchWeather(lat,lng).then(w=>{if(this.activeRide)this.activeRide.weather=w;});
+    if(!lastPt&&!this.activeRide.weather)this.fetchWeather(lat,lng).then(w=>{if(this.activeRide)this.activeRide.weather=w;});
     this.activeRide.points.push({lat,lng,t:Date.now()});
-    if (lastPt) this.activeRide.distance+=this.haversine(lastPt.lat,lastPt.lng,lat,lng);
-    const ll=[lat,lng];
-    this.trackLine.addLatLng(ll);
+    if(lastPt)this.activeRide.distance+=this.haversine(lastPt.lat,lastPt.lng,lat,lng);
+    const ll=[lat,lng];this.trackLine.addLatLng(ll);
     const dh='<div style="width:14px;height:14px;background:#ff375f;border:2.5px solid white;border-radius:50%;box-shadow:0 2px 6px rgba(0,0,0,.5)"></div>';
-    if (!this.trackDot) {
+    if(!this.trackDot){
       this.trackDot=L.marker(ll,{icon:L.divIcon({className:'',html:dh,iconSize:[14,14],iconAnchor:[7,7]})}).addTo(this.trackMap);
       this.trackMap.setView(ll,15);
-    } else { this.trackDot.setLatLng(ll); this.trackMap.panTo(ll,{animate:true,duration:.5}); }
+    }else{this.trackDot.setLatLng(ll);this.trackMap.panTo(ll,{animate:true,duration:.5});}
     document.getElementById('sv-speed').textContent=speed!=null?Math.round(speed*3.6):'—';
     document.getElementById('sv-dist').textContent=this.activeRide.distance.toFixed(1);
   },
 
-  setGPSStatus(s,t) {
-    document.getElementById('gps-dot').style.background=s==='ok'?'#30d158':s==='error'?'#ff375f':'#8e8e93';
+  setGPSStatus(s,t){
+    document.getElementById('gps-dot').style.background=s==='ok'?'#30d158':s==='error'?'#ff375f':'#636366';
     document.getElementById('gps-text').textContent=t;
   },
 
-  startTimer() {
-    const t0=Date.now(); clearInterval(this.timer);
+  startTimer(){
+    const t0=Date.now();clearInterval(this.timer);
     this.timer=setInterval(()=>{
       const ms=Date.now()-t0,m=Math.floor(ms/60000),s=Math.floor((ms%60000)/1000);
       document.getElementById('sv-time').textContent=String(m).padStart(2,'0')+':'+String(s).padStart(2,'0');
     },1000);
   },
 
-  openStopModal() {
+  openStopModal(){
     document.getElementById('confirm-dist').textContent=(this.activeRide?.distance||0).toFixed(1);
     this.openOverlay('stop-overlay');
   },
 
-  stopRide() {
+  stopRide(){
     this.closeOverlay('stop-overlay');
-    if (this.watchId!=null){navigator.geolocation.clearWatch(this.watchId);this.watchId=null;}
+    if(this.watchId!=null){navigator.geolocation.clearWatch(this.watchId);this.watchId=null;}
     clearInterval(this.timer);
     this.activeRide.endTime=Date.now();
-    if (this.trackDot){this.trackDot.remove();this.trackDot=null;}
-    this.rides.unshift(this.activeRide);
-    this.saveRides();
-    this.pendingRateId=this.activeRide.id;
-    this.activeRide=null;
+    if(this.trackDot){this.trackDot.remove();this.trackDot=null;}
+    this.rides.unshift(this.activeRide);this.saveRides();
+    this.pendingRateId=this.activeRide.id;this.activeRide=null;
     this.openRateOverlay();
   },
 
-  openRateOverlay() {
-    this.pendingRating=0; this.pendingRouteTags=[];
+  openRateOverlay(){
+    this.pendingRating=0;this.pendingRouteTags=[];
     document.getElementById('rate-note').value='';
     document.querySelectorAll('#star-row .star-btn').forEach(s=>s.classList.remove('on'));
     document.querySelectorAll('.rtag-btn').forEach(b=>b.classList.remove('on'));
     this.openOverlay('rate-overlay');
   },
 
-  setRating(n) {
+  setRating(n){
     this.pendingRating=n;
     document.querySelectorAll('#star-row .star-btn').forEach((s,i)=>s.classList.toggle('on',i<n));
   },
 
-  toggleRouteTag(el,tag) {
+  toggleRouteTag(el,tag){
     el.classList.toggle('on');
-    if (el.classList.contains('on')) this.pendingRouteTags.push(tag);
+    if(el.classList.contains('on'))this.pendingRouteTags.push(tag);
     else this.pendingRouteTags=this.pendingRouteTags.filter(t=>t!==tag);
   },
 
-  saveRating() {
+  saveRating(){
     const note=document.getElementById('rate-note').value.trim();
     const ride=this.rides.find(r=>r.id===this.pendingRateId);
-    if (ride){ride.rating=this.pendingRating;ride.note=note;ride.routeTags=[...this.pendingRouteTags];this.saveRides();}
-    this.closeOverlay('rate-overlay');
-    this.viewRide(this.pendingRateId);
+    if(ride){ride.rating=this.pendingRating;ride.note=note;ride.routeTags=[...this.pendingRouteTags];this.saveRides();}
+    this.closeOverlay('rate-overlay');this.viewRide(this.pendingRateId);
   },
 
-  openLandmarkModal() {
-    this.selectedTag=null; this.photoData=null;
+  openLandmarkModal(){
+    this.selectedTag=null;this.photoData=null;
     document.getElementById('lm-note').value='';
     document.getElementById('photo-input').value='';
     const pa=document.getElementById('photo-area');
-    const prev=pa.querySelector('img'); if(prev)prev.remove();
+    const prev=pa.querySelector('img');if(prev)prev.remove();
     pa.querySelector('.ph-icon').style.display='';
     pa.querySelector('.ph-text').style.display='';
     document.querySelectorAll('.tag-btn').forEach(b=>b.classList.remove('on'));
     this.openOverlay('lm-overlay');
   },
 
-  toggleTag(el,tag) {
+  toggleTag(el,tag){
     document.querySelectorAll('.tag-btn').forEach(b=>b.classList.remove('on'));
-    if (this.selectedTag===tag){this.selectedTag=null;}
+    if(this.selectedTag===tag)this.selectedTag=null;
     else{el.classList.add('on');this.selectedTag=tag;}
   },
 
-  onPhotoChange(input) {
-    const file=input.files[0]; if(!file)return;
+  onPhotoChange(input){
+    const file=input.files[0];if(!file)return;
     const reader=new FileReader();
     reader.onload=e=>{
       const img=new Image();
@@ -828,29 +753,26 @@ const App = {
         pa.querySelector('.ph-icon').style.display='none';
         pa.querySelector('.ph-text').style.display='none';
         const pv=document.createElement('img');pv.src=this.photoData;pa.appendChild(pv);
-      };
-      img.src=e.target.result;
-    };
-    reader.readAsDataURL(file);
+      };img.src=e.target.result;
+    };reader.readAsDataURL(file);
   },
 
-  saveLandmark() {
-    if (!this.activeRide)return;
+  saveLandmark(){
+    if(!this.activeRide)return;
     const note=document.getElementById('lm-note').value.trim();
     const pt=this.activeRide.points.at(-1);
     const lm={id:Date.now(),time:Date.now(),lat:pt?.lat??null,lng:pt?.lng??null,tag:this.selectedTag,note,photo:this.photoData};
     this.activeRide.landmarks.push(lm);
-    if (lm.lat&&this.trackMap) {
-      const icon=L.divIcon({className:'',iconSize:[24,24],iconAnchor:[12,12],
-        html:`<div style="width:24px;height:24px;background:#32ade6;border:2px solid white;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:13px;box-shadow:0 2px 6px rgba(0,0,0,.5)">${this.tagEmoji(lm.tag)}</div>`});
+    if(lm.lat&&this.trackMap){
+      const icon=L.divIcon({className:'',iconSize:[22,22],iconAnchor:[11,11],
+        html:`<div style="width:22px;height:22px;background:#32ade6;border:2px solid white;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12px">${this.tagEmoji(lm.tag)}</div>`});
       L.marker([lm.lat,lm.lng],{icon}).bindPopup(lm.note||lm.tag||'地標').addTo(this.trackMap);
     }
-    this.closeOverlay('lm-overlay');
-    this.toast('地標已儲存');
+    this.closeOverlay('lm-overlay');this.toast('地標已儲存');
   },
 
-  viewRide(id) {
-    const ride=this.rides.find(r=>r.id===id); if(!ride)return;
+  viewRide(id){
+    const ride=this.rides.find(r=>r.id===id);if(!ride)return;
     this.viewingId=id;
     document.getElementById('detail-title').textContent=ride.name;
     document.getElementById('d-dist').textContent=(ride.distance||0).toFixed(1);
@@ -858,11 +780,11 @@ const App = {
     document.getElementById('d-dur').textContent=this.fmtDuration((ride.endTime||Date.now())-ride.startTime);
 
     let h='<div style="display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin-bottom:12px">';
-    if (ride.weather) h+=`<span style="font-size:12px;color:var(--dim)">${ride.weather.icon} ${ride.weather.temp}°C</span>`;
-    if (ride.rating>0) h+=`<span style="font-size:13px;color:var(--orange);letter-spacing:-1px">${'★'.repeat(ride.rating)}${'☆'.repeat(5-ride.rating)}</span>`;
-    (ride.routeTags||[]).forEach(t=>{h+=`<span style="font-size:10px;font-weight:700;padding:2px 8px;border-radius:100px;background:var(--bg3);color:var(--dim);border:0.5px solid var(--border)">${t}</span>`;});
+    if(ride.weather)h+=`<span style="font-size:12px;color:var(--dim)">${ride.weather.icon} ${ride.weather.temp}°C</span>`;
+    if(ride.rating>0)h+=`<span style="font-size:13px;color:var(--orange);letter-spacing:-1px">${'★'.repeat(ride.rating)}${'☆'.repeat(5-ride.rating)}</span>`;
+    (ride.routeTags||[]).forEach(t=>{h+=`<span style="font-size:10px;font-weight:700;padding:2px 8px;border-radius:100px;background:var(--bg3);color:var(--dim)">${t}</span>`;});
     h+='</div>';
-    if (ride.note) h+=`<div style="font-size:13px;color:var(--dim);line-height:1.6;margin-bottom:14px;padding:10px 12px;background:var(--bg2);border-radius:8px">${this.esc(ride.note)}</div>`;
+    if(ride.note)h+=`<div style="font-size:13px;color:var(--dim);line-height:1.6;margin-bottom:14px;padding:10px 12px;background:var(--bg2);border-radius:8px">${this.esc(ride.note)}</div>`;
     document.getElementById('detail-header').innerHTML=h;
 
     const lmList=document.getElementById('detail-lm-list');
@@ -875,61 +797,61 @@ const App = {
 
     this.showScreen('detail-screen');
     setTimeout(()=>{
-      if (this.detailMap){this.detailMap.remove();this.detailMap=null;}
+      if(this.detailMap){this.detailMap.remove();this.detailMap=null;}
       this.detailMap=L.map('leaflet-detail',{zoomControl:false,attributionControl:false});
       L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19}).addTo(this.detailMap);
       const pts=ride.points;
-      if (pts.length>1) {
+      if(pts.length>1){
         const lls=pts.map(p=>[p.lat,p.lng]);
         L.polyline(lls,{color:'#ff375f',weight:4,opacity:.9}).addTo(this.detailMap);
-        const mkr=c=>L.divIcon({className:'',iconSize:[11,11],iconAnchor:[5.5,5.5],html:`<div style="width:11px;height:11px;background:${c};border:2px solid white;border-radius:50%"></div>`});
+        const mkr=c=>L.divIcon({className:'',iconSize:[10,10],iconAnchor:[5,5],html:`<div style="width:10px;height:10px;background:${c};border:2px solid white;border-radius:50%"></div>`});
         L.marker(lls[0],{icon:mkr('#30d158')}).addTo(this.detailMap);
         L.marker(lls[lls.length-1],{icon:mkr('#ff375f')}).addTo(this.detailMap);
         this.detailMap.fitBounds(L.latLngBounds(lls),{padding:[20,20]});
-      } else {
+      }else{
         this.detailMap.setView(pts[0]?[pts[0].lat,pts[0].lng]:[25.0375,121.5637],pts[0]?15:11);
       }
       ride.landmarks.forEach(lm=>{
         if(lm.lat==null)return;
-        const icon=L.divIcon({className:'',iconSize:[22,22],iconAnchor:[11,11],
-          html:`<div style="width:22px;height:22px;background:#32ade6;border:2px solid white;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px">${this.tagEmoji(lm.tag)}</div>`});
+        const icon=L.divIcon({className:'',iconSize:[20,20],iconAnchor:[10,10],
+          html:`<div style="width:20px;height:20px;background:#32ade6;border:2px solid white;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:10px">${this.tagEmoji(lm.tag)}</div>`});
         L.marker([lm.lat,lm.lng],{icon}).bindPopup(lm.note||lm.tag||'地標').addTo(this.detailMap);
       });
     },150);
   },
 
-  deleteRide() {
-    if(!confirm('確定要刪除這段路線嗎？'))return;
+  deleteRide(){
+    if(!confirm('確定要刪除？'))return;
     this.rides=this.rides.filter(r=>r.id!==this.viewingId);
-    this.saveRides(); this.goHome();
+    this.saveRides();this.goHome();
   },
 
-  shareRide() {
-    const ride=this.rides.find(r=>r.id===this.viewingId); if(!ride)return;
+  shareRide(){
+    const ride=this.rides.find(r=>r.id===this.viewingId);if(!ride)return;
     const lines=[
       `🏍 ${ride.name}`,
       ride.rating?'⭐'.repeat(ride.rating):'',
       `📅 ${new Date(ride.date).toLocaleDateString('zh-TW')}`,
       ride.weather?`${ride.weather.icon} ${ride.weather.temp}°C`:'',
-      `📏 ${(ride.distance||0).toFixed(1)} 公里`,
+      `📏 ${(ride.distance||0).toFixed(1)} km`,
       `⏱ ${this.fmtDuration((ride.endTime||Date.now())-ride.startTime)}`,
       ride.note?`\n💬 ${ride.note}`:'',
-      `\n用「重機日誌」記錄的路線`,
+      `\n用「重機日誌」記錄`,
     ].filter(Boolean).join('\n');
     if(navigator.share)navigator.share({title:ride.name,text:lines}).catch(()=>{});
     else navigator.clipboard?.writeText(lines).then(()=>this.toast('已複製')).catch(()=>this.toast('分享不支援'));
   },
 
-  setFilter(el,tag) {
+  setFilter(el,tag){
     this.activeFilter=tag;
     document.querySelectorAll('.filter-chip').forEach(c=>c.classList.remove('active'));
-    el.classList.add('active'); this.renderHomeList();
+    el.classList.add('active');this.renderHomeList();
   },
 
-  renderHomeList() {
+  renderHomeList(){
     const el=document.getElementById('rides-list');
     const filtered=this.activeFilter?this.rides.filter(r=>(r.routeTags||[]).includes(this.activeFilter)):this.rides;
-    if (!filtered.length) {
+    if(!filtered.length){
       el.innerHTML=!this.rides.length
         ?'<div class="empty-state"><div class="ei">🗺️</div><p>還沒有騎乘記錄<br>按上方按鈕開始第一段路線</p></div>'
         :`<div class="empty-state"><div class="ei">🔍</div><p>沒有「${this.activeFilter}」的路線</p></div>`;
@@ -938,20 +860,20 @@ const App = {
     el.innerHTML=filtered.map(r=>{
       const dur=Math.floor(((r.endTime||r.startTime)-r.startTime)/60000);
       const durStr=dur<60?dur+'分':Math.floor(dur/60)+'h'+(dur%60?dur%60+'m':'');
-      const stars=r.rating>0?`<span class="ride-stars">${'★'.repeat(r.rating)}</span>`:'';
-      const weather=r.weather?`<span class="ride-date">${r.weather.icon} ${r.weather.temp}°</span>`:'';
-      const rtags=(r.routeTags||[]).length?`<div class="ride-rtags">${r.routeTags.map(t=>`<span class="rtag-chip">${t}</span>`).join('')}</div>`:'';
-      return `<div class="ride-card" onclick="App.viewRide(${r.id})">
-        <div class="ride-thumb">${this.buildThumb(r)}</div>
-        <div class="ride-body">
-          <div class="ride-name">${this.esc(r.name)}</div>
-          <div class="ride-metrics">
-            <span class="rm rm-red">${(r.distance||0).toFixed(1)}km</span>
-            <span class="rm rm-green">${durStr}</span>
-            ${r.landmarks.length?`<span class="rm rm-cyan">${r.landmarks.length}站`:''}
+      const stars=r.rating>0?`<span class="ride-row-stars">${'★'.repeat(r.rating)}</span>`:'';
+      const weather=r.weather?`<span class="ride-row-date">${r.weather.icon}${r.weather.temp}°</span>`:'';
+      const rtags=(r.routeTags||[]).length?`<div class="ride-row-tags">${r.routeTags.map(t=>`<span class="ride-row-tag">${t}</span>`).join('')}</div>`:'';
+      return `<div class="ride-row" onclick="App.viewRide(${r.id})">
+        <div class="ride-row-accent"></div>
+        <div class="ride-row-body">
+          <div class="ride-row-name">${this.esc(r.name)}</div>
+          <div class="ride-row-metrics">
+            <span class="rrm rrm-r">${(r.distance||0).toFixed(1)}km</span>
+            <span class="rrm rrm-g">${durStr}</span>
+            ${r.landmarks.length?`<span class="rrm rrm-c">${r.landmarks.length}站</span>`:''}
           </div>
-          <div class="ride-sub">
-            <span class="ride-date">${new Date(r.date).toLocaleDateString('zh-TW',{month:'numeric',day:'numeric'})}</span>
+          <div class="ride-row-sub">
+            <span class="ride-row-date">${new Date(r.date).toLocaleDateString('zh-TW',{month:'numeric',day:'numeric'})}</span>
             ${weather}${stars}${rtags}
           </div>
         </div>
@@ -960,23 +882,23 @@ const App = {
     }).join('');
   },
 
-  renderStats() {
-    const totalKm=this.rides.reduce((s,r)=>s+(r.distance||0),0);
-    const totalH=this.rides.reduce((s,r)=>s+((r.endTime||r.startTime)-r.startTime),0)/3600000;
-    document.getElementById('stats-hero').innerHTML=`
-      <div class="stats-hero-col sh-red"><div class="shc-label">距離</div><div><span class="shc-val">${totalKm.toFixed(0)}</span><span class="shc-unit">km</span></div></div>
-      <div class="stats-hero-col sh-green"><div class="shc-label">時數</div><div><span class="shc-val">${totalH.toFixed(1)}</span><span class="shc-unit">hr</span></div></div>
-      <div class="stats-hero-col sh-cyan"><div class="shc-label">次數</div><div><span class="shc-val">${this.rides.length}</span><span class="shc-unit">次</span></div></div>`;
+  renderStats(){
+    const km=this.rides.reduce((s,r)=>s+(r.distance||0),0);
+    const hr=this.rides.reduce((s,r)=>s+((r.endTime||r.startTime)-r.startTime),0)/3600000;
+    const ct=this.rides.length;
+    const srKm=document.getElementById('sr-km-val');
+    if(srKm){srKm.textContent=km.toFixed(0);document.getElementById('sr-hr-val').textContent=hr.toFixed(1);document.getElementById('sr-ct-val').textContent=ct;}
+    this.updateRings();
 
     const now=new Date();
     const months=Array.from({length:6},(_,i)=>{const d=new Date(now.getFullYear(),now.getMonth()-5+i,1);return{year:d.getFullYear(),month:d.getMonth(),label:`${d.getMonth()+1}月`};});
     const counts=months.map(m=>this.rides.filter(r=>{const d=new Date(r.date);return d.getFullYear()===m.year&&d.getMonth()===m.month;}).length);
     const maxC=Math.max(...counts,1);
     document.getElementById('month-chart').innerHTML=months.map((m,i)=>`
-      <div class="month-row">
-        <div class="month-label">${m.label}</div>
-        <div class="month-bar-wrap"><div class="month-bar" style="width:${(counts[i]/maxC*100).toFixed(0)}%"></div></div>
-        <div class="month-count">${counts[i]}</div>
+      <div class="chart-bar-col">
+        <div class="chart-bar-count">${counts[i]||''}</div>
+        <div class="chart-bar" style="height:${Math.max(counts[i]/maxC*56,counts[i]?4:0).toFixed(0)}px"></div>
+        <div class="chart-bar-label">${m.label}</div>
       </div>`).join('');
 
     const tagCounts={};
@@ -999,52 +921,28 @@ const App = {
       <div class="top-stat-card"><div class="ts-label">最多地標</div><div class="ts-val" style="color:var(--green)">${mostLm?mostLm.landmarks.length+' 個':'—'}</div><div class="ts-sub">${mostLm?this.esc(mostLm.name):''}</div></div>`;
   },
 
-  renderAlbum() {
+  renderAlbum(){
     const photos=[];
     this.rides.forEach(r=>r.landmarks.forEach(lm=>{if(lm.photo)photos.push({photo:lm.photo,tag:lm.tag,rideName:r.name});}));
     this._albumPhotos=photos;
     const el=document.getElementById('album-grid');
-    if (!photos.length){el.innerHTML='<div class="empty-state" style="grid-column:span 2;padding:48px 0"><div class="ei">📷</div><p>新增帶照片的地標<br>就會出現在這裡</p></div>';return;}
+    if(!photos.length){el.innerHTML='<div class="empty-state" style="grid-column:span 2;padding:48px 0"><div class="ei">📷</div><p>新增帶照片的地標<br>就會出現在這裡</p></div>';return;}
     el.innerHTML=photos.map((p,i)=>`<div class="album-item" onclick="App.openLightbox(${i})"><img src="${p.photo}" loading="lazy"><div class="album-meta">${p.tag?`<div class="album-tag">${p.tag}</div>`:''}<div>${this.esc(p.rideName)}</div></div></div>`).join('');
   },
 
-  openLightbox(i) {
-    const p=this._albumPhotos[i];
-    document.getElementById('lb-img').src=p.photo;
-    document.getElementById('lb-tag').textContent=p.tag||'';
-    document.getElementById('lb-ride').textContent=p.rideName;
-    document.getElementById('lightbox').classList.add('open');
-  },
+  openLightbox(i){const p=this._albumPhotos[i];document.getElementById('lb-img').src=p.photo;document.getElementById('lb-tag').textContent=p.tag||'';document.getElementById('lb-ride').textContent=p.rideName;document.getElementById('lightbox').classList.add('open');},
   closeLightbox(){document.getElementById('lightbox').classList.remove('open');},
 
-  async fetchWeather(lat,lng) {
-    try {
-      const r=await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat.toFixed(4)}&longitude=${lng.toFixed(4)}&current=weathercode,temperature_2m`);
-      const d=await r.json();
-      return{code:d.current.weathercode,temp:Math.round(d.current.temperature_2m),icon:this.weatherIcon(d.current.weathercode)};
-    }catch(e){return null;}
+  async fetchWeather(lat,lng){
+    try{const r=await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat.toFixed(4)}&longitude=${lng.toFixed(4)}&current=weathercode,temperature_2m`);const d=await r.json();return{code:d.current.weathercode,temp:Math.round(d.current.temperature_2m),icon:this.weatherIcon(d.current.weathercode)};}catch(e){return null;}
   },
   weatherIcon(c){if(c===0)return'☀️';if(c<=2)return'🌤';if(c===3)return'☁️';if(c<=48)return'🌫';if(c<=67)return'🌧';if(c<=77)return'🌨';if(c<=82)return'🌦';return'⛈';},
-
-  buildThumb(ride) {
-    if(!ride.points||ride.points.length<2)return'<div class="no-map">🛣️</div>';
-    const W=144,H=52,pad=5;
-    const lats=ride.points.map(p=>p.lat),lngs=ride.points.map(p=>p.lng);
-    const minLat=Math.min(...lats),maxLat=Math.max(...lats),minLng=Math.min(...lngs),maxLng=Math.max(...lngs);
-    const sx=(W-pad*2)/(maxLng-minLng||1),sy=(H-pad*2)/(maxLat-minLat||1);
-    const pts=ride.points.map(p=>`${(pad+(p.lng-minLng)*sx).toFixed(1)},${(H-pad-(p.lat-minLat)*sy).toFixed(1)}`).join(' ');
-    return `<svg width="${W}" height="${H}" style="width:100%;height:100%;display:block" viewBox="0 0 ${W} ${H}"><rect width="${W}" height="${H}" fill="#141414"/><polyline points="${pts}" fill="none" stroke="#ff375f" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" opacity=".9"/></svg>`;
-  },
 
   openOverlay(id){document.getElementById(id).classList.add('open');},
   closeOverlay(id){document.getElementById(id).classList.remove('open');},
   overlayClick(e,id){if(e.target===document.getElementById(id))this.closeOverlay(id);},
 
-  toast(msg,ms=2000){
-    const el=document.getElementById('toast');
-    el.textContent=msg;el.classList.add('show');
-    clearTimeout(this._tt);this._tt=setTimeout(()=>el.classList.remove('show'),ms);
-  },
+  toast(msg,ms=2000){const el=document.getElementById('toast');el.textContent=msg;el.classList.add('show');clearTimeout(this._tt);this._tt=setTimeout(()=>el.classList.remove('show'),ms);},
 
   haversine(a,b,c,d){const R=6371,dL=(c-a)*Math.PI/180,dG=(d-b)*Math.PI/180,x=Math.sin(dL/2)**2+Math.cos(a*Math.PI/180)*Math.cos(c*Math.PI/180)*Math.sin(dG/2)**2;return R*2*Math.atan2(Math.sqrt(x),Math.sqrt(1-x));},
   fmtDuration(ms){const m=Math.floor(ms/60000),h=Math.floor(m/60);return h>0?`${h}h${m%60}m`:`${m}分`;},
