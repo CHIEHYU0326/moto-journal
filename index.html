@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black">
-<meta name="theme-color" content="#111827">
+<meta name="theme-color" content="#000000">
 <meta name="description" content="記錄你的重機路線和地標">
 <title>重機日誌</title>
 <link rel="manifest" href="manifest.json">
@@ -13,21 +13,21 @@
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
 <style>
 :root {
-  --bg:     #111827;
-  --bg2:    #1f2937;
-  --bg3:    #374151;
-  --orange: #f97316;
-  --cyan:   #38bdf8;
-  --green:  #22c55e;
-  --red:    #ef4444;
-  --text:   #f9fafb;
-  --dim:    #9ca3af;
-  --border: #374151;
+  --bg:     #000000;
+  --bg2:    #141414;
+  --bg3:    #202020;
+  --bg4:    #2a2a2a;
+  --red:    #ff375f;
+  --green:  #30d158;
+  --cyan:   #32ade6;
+  --orange: #ff9f0a;
+  --text:   #ffffff;
+  --dim:    #8e8e93;
+  --border: #272727;
 }
 * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
 html, body {
-  height: 100%; height: 100dvh;
-  overflow: hidden;
+  height: 100%; height: 100dvh; overflow: hidden;
   background: var(--bg); color: var(--text);
   font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Segoe UI', sans-serif;
   -webkit-font-smoothing: antialiased;
@@ -35,12 +35,9 @@ html, body {
 
 /* SCREENS */
 .screen {
-  position: fixed; inset: 0;
-  display: flex; flex-direction: column;
-  background: var(--bg);
-  transform: translateX(100%);
-  transition: transform 0.3s cubic-bezier(0.4,0,0.2,1);
-  z-index: 10;
+  position: fixed; inset: 0; display: flex; flex-direction: column;
+  background: var(--bg); transform: translateX(100%);
+  transition: transform 0.3s cubic-bezier(0.4,0,0.2,1); z-index: 10;
 }
 .screen.active { transform: translateX(0); z-index: 20; }
 .screen.behind  { transform: translateX(-25%); z-index: 10; }
@@ -49,364 +46,386 @@ html, body {
 
 /* TOP BAR */
 .topbar {
-  display: flex; align-items: center; gap: 10px;
-  padding: 12px 16px;
-  padding-top: max(16px, env(safe-area-inset-top));
-  background: var(--bg); border-bottom: 1px solid var(--border);
+  display: flex; align-items: center; gap: 8px;
+  padding: 10px 16px;
+  padding-top: max(14px, env(safe-area-inset-top));
+  background: var(--bg);
+  border-bottom: 0.5px solid var(--border);
   flex-shrink: 0;
 }
-.topbar h1 { font-size: 18px; font-weight: 700; flex: 1; }
+.topbar h1 { font-size: 16px; font-weight: 700; flex: 1; }
+.topbar .tb-date { font-size: 11px; color: var(--dim); }
 .icon-btn {
-  width: 38px; height: 38px; border: none; border-radius: 50%;
+  width: 32px; height: 32px; border: none; border-radius: 50%;
   display: flex; align-items: center; justify-content: center;
-  cursor: pointer; font-size: 16px; flex-shrink: 0;
+  cursor: pointer; font-size: 14px; flex-shrink: 0;
 }
-.icon-btn.gray { background: var(--bg2); color: var(--text); border: 1px solid var(--border); }
-.icon-btn.red  { background: rgba(239,68,68,.15); color: var(--red); border: 1px solid rgba(239,68,68,.3); }
+.icon-btn.gray { background: var(--bg3); color: var(--text); }
+.icon-btn.red  { background: rgba(255,55,95,.15); color: var(--red); }
 
 /* BOTTOM NAV */
 #bottom-nav {
   position: fixed; bottom: 0; left: 0; right: 0;
-  height: calc(60px + env(safe-area-inset-bottom));
+  height: calc(50px + env(safe-area-inset-bottom));
   padding-bottom: env(safe-area-inset-bottom);
-  background: var(--bg2); border-top: 1px solid var(--border);
+  background: rgba(0,0,0,.92);
+  backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
+  border-top: 0.5px solid var(--border);
   display: flex; z-index: 50;
 }
 .nav-item {
   flex: 1; display: flex; flex-direction: column;
   align-items: center; justify-content: center;
-  gap: 3px; cursor: pointer; color: var(--dim);
+  gap: 2px; cursor: pointer; color: var(--dim);
   transition: color .15s; user-select: none;
 }
 .nav-item.active { color: var(--orange); }
-.nav-icon  { font-size: 22px; line-height: 1; }
-.nav-label { font-size: 10px; font-weight: 600; letter-spacing: .03em; }
+.nav-icon  { font-size: 20px; line-height: 1; }
+.nav-label { font-size: 9px; font-weight: 600; letter-spacing: .02em; }
 
 /* FILTER CHIPS */
 .filter-wrap {
-  display: flex; gap: 8px; padding: 10px 16px;
+  display: flex; gap: 6px; padding: 8px 16px;
   overflow-x: auto; flex-shrink: 0;
-  border-bottom: 1px solid var(--border);
-  scrollbar-width: none;
+  border-bottom: 0.5px solid var(--border); scrollbar-width: none;
 }
 .filter-wrap::-webkit-scrollbar { display: none; }
 .filter-chip {
-  flex-shrink: 0; padding: 6px 14px; border-radius: 100px;
-  border: 1px solid var(--border); background: var(--bg2);
-  color: var(--dim); font-size: 12px; font-weight: 600;
+  flex-shrink: 0; padding: 5px 12px; border-radius: 100px;
+  border: 0.5px solid var(--border); background: var(--bg2);
+  color: var(--dim); font-size: 11px; font-weight: 600;
   cursor: pointer; transition: all .15s; user-select: none;
 }
-.filter-chip.active { background: var(--orange); border-color: var(--orange); color: white; }
+.filter-chip.active { background: var(--orange); border-color: var(--orange); color: #000; }
 
 /* HOME SCROLL */
 #home-screen .scroll {
-  flex: 1; overflow-y: auto;
-  padding: 20px 16px;
-  padding-bottom: calc(76px + env(safe-area-inset-bottom));
+  flex: 1; overflow-y: auto; padding: 0;
+  padding-bottom: calc(58px + env(safe-area-inset-bottom));
 }
-.hero { text-align: center; padding: 28px 0 32px; }
-.hero-icon { font-size: 56px; line-height: 1; }
-.hero h2   { font-size: 26px; font-weight: 800; margin-top: 10px; }
-.hero p    { font-size: 14px; color: var(--dim); margin-top: 4px; }
 
-.start-btn {
-  width: 100%; padding: 18px;
-  background: var(--orange); color: white;
-  border: none; border-radius: 16px;
-  font-size: 18px; font-weight: 700; cursor: pointer;
-  margin-bottom: 28px;
-  display: flex; align-items: center; justify-content: center; gap: 10px;
-  box-shadow: 0 4px 20px rgba(249,115,22,.4);
-  transition: opacity .15s, transform .15s;
+/* SUMMARY STRIP */
+.summary-strip {
+  display: flex; padding: 14px 16px; gap: 0;
+  border-bottom: 0.5px solid var(--border);
 }
-.start-btn:active { opacity: .85; transform: scale(.97); }
+.summary-col { flex: 1; }
+.summary-col + .summary-col { border-left: 0.5px solid var(--border); padding-left: 16px; }
+.summary-col .sc-label { font-size: 10px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; margin-bottom: 2px; }
+.summary-col .sc-val   { font-size: 22px; font-weight: 800; line-height: 1; font-variant-numeric: tabular-nums; }
+.summary-col .sc-unit  { font-size: 10px; color: var(--dim); margin-left: 2px; font-weight: 600; }
+.col-red   .sc-label { color: var(--red); }
+.col-red   .sc-val   { color: var(--red); }
+.col-green .sc-label { color: var(--green); }
+.col-green .sc-val   { color: var(--green); }
+.col-cyan  .sc-label { color: var(--cyan); }
+.col-cyan  .sc-val   { color: var(--cyan); }
 
-.section-label {
-  font-size: 11px; font-weight: 700; letter-spacing: .08em;
-  text-transform: uppercase; color: var(--dim); margin-bottom: 12px;
+.list-header {
+  font-size: 10px; font-weight: 700; letter-spacing: .06em;
+  text-transform: uppercase; color: var(--dim);
+  padding: 12px 16px 6px;
 }
-.empty-state { text-align: center; padding: 48px 0; color: var(--dim); }
-.empty-state .ei { font-size: 44px; margin-bottom: 10px; }
-.empty-state p   { font-size: 14px; line-height: 1.7; }
+.empty-state { text-align: center; padding: 40px 0; color: var(--dim); }
+.empty-state .ei { font-size: 36px; margin-bottom: 8px; }
+.empty-state p   { font-size: 13px; line-height: 1.7; }
 
 /* RIDE CARD */
 .ride-card {
-  background: var(--bg2); border-radius: 16px;
-  overflow: hidden; margin-bottom: 12px;
-  cursor: pointer; border: 1px solid var(--border);
-  transition: border-color .15s;
+  display: flex; gap: 12px; padding: 12px 16px;
+  border-bottom: 0.5px solid var(--border);
+  cursor: pointer; align-items: center;
+  transition: background .1s;
 }
-.ride-card:active { border-color: var(--orange); }
-.ride-card-thumb { height: 110px; background: var(--bg3); position: relative; overflow: hidden; }
-.ride-card-thumb .no-map {
+.ride-card:active { background: var(--bg2); }
+.ride-thumb {
+  width: 72px; height: 52px; flex-shrink: 0;
+  border-radius: 8px; overflow: hidden; background: var(--bg2);
+  position: relative;
+}
+.ride-thumb .no-map {
   position: absolute; inset: 0;
   display: flex; align-items: center; justify-content: center;
-  font-size: 36px; color: var(--dim);
+  font-size: 24px; color: var(--dim);
 }
-.ride-card-body { padding: 14px; }
-.ride-card-body .rname { font-size: 16px; font-weight: 700; margin-bottom: 8px; }
-.ride-card-meta { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
-.meta-item { font-size: 13px; color: var(--dim); }
-.meta-item b { color: var(--text); font-weight: 600; }
-.ride-stars { font-size: 13px; color: var(--orange); letter-spacing: -1px; }
-.ride-rtags { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+.ride-body { flex: 1; min-width: 0; }
+.ride-name { font-size: 14px; font-weight: 600; margin-bottom: 5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ride-metrics { display: flex; gap: 10px; margin-bottom: 4px; }
+.rm { font-size: 12px; font-weight: 700; }
+.rm-red  { color: var(--red); }
+.rm-green{ color: var(--green); }
+.rm-cyan { color: var(--cyan); }
+.ride-sub { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.ride-date { font-size: 11px; color: var(--dim); }
+.ride-stars { font-size: 11px; color: var(--orange); letter-spacing: -1px; }
+.ride-rtags { display: flex; gap: 4px; flex-wrap: wrap; }
 .rtag-chip {
-  font-size: 11px; font-weight: 600;
-  padding: 2px 8px; border-radius: 100px;
-  background: var(--bg3); color: var(--dim); border: 1px solid var(--border);
+  font-size: 10px; font-weight: 600;
+  padding: 1px 6px; border-radius: 100px;
+  background: var(--bg3); color: var(--dim);
+  border: 0.5px solid var(--border);
 }
+.ride-chevron { color: var(--bg4); font-size: 14px; flex-shrink: 0; }
+
+/* START BUTTON */
+.start-row { padding: 12px 16px; border-bottom: 0.5px solid var(--border); }
+.start-btn {
+  width: 100%; padding: 14px;
+  background: var(--orange); color: #000;
+  border: none; border-radius: 10px;
+  font-size: 15px; font-weight: 700; cursor: pointer;
+  display: flex; align-items: center; justify-content: center; gap: 8px;
+  transition: opacity .15s, transform .15s;
+}
+.start-btn:active { opacity: .85; transform: scale(.98); }
 
 /* TRACKING SCREEN */
 #track-map-wrap { flex: 1; position: relative; overflow: hidden; }
 #leaflet-track  { width: 100%; height: 100%; }
 .stats-overlay {
   position: absolute; top: 12px; left: 12px; right: 12px;
-  background: rgba(17,24,39,.88);
-  backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
-  border: 1px solid rgba(255,255,255,.12);
-  border-radius: 18px; padding: 16px 0;
+  background: rgba(0,0,0,.82);
+  backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px);
+  border: 0.5px solid rgba(255,255,255,.12);
+  border-radius: 14px; padding: 14px 0;
   display: flex; z-index: 500;
 }
-.stat-col { flex: 1; text-align: center; border-right: 1px solid rgba(255,255,255,.1); }
+.stat-col { flex: 1; text-align: center; border-right: 0.5px solid rgba(255,255,255,.1); }
 .stat-col:last-child { border-right: none; }
-.stat-val { font-size: 30px; font-weight: 800; font-variant-numeric: tabular-nums; line-height: 1; }
-.stat-unit { font-size: 11px; color: var(--dim); margin-top: 3px; }
+.stat-val  { font-size: 28px; font-weight: 800; font-variant-numeric: tabular-nums; line-height: 1; }
+.stat-unit { font-size: 10px; color: var(--dim); margin-top: 3px; }
 .rec-dot {
-  display: inline-block; width: 8px; height: 8px; border-radius: 50%;
-  background: var(--green); margin-right: 4px; animation: blink 1.4s infinite;
+  display: inline-block; width: 7px; height: 7px; border-radius: 50%;
+  background: var(--green); margin-right: 3px; animation: blink 1.4s infinite;
 }
 @keyframes blink { 0%,100%{opacity:1} 50%{opacity:.2} }
 .gps-badge {
   position: absolute; bottom: 12px; right: 12px;
-  background: rgba(17,24,39,.85);
-  backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
-  border: 1px solid rgba(255,255,255,.1);
-  border-radius: 100px; padding: 6px 12px;
-  font-size: 12px; display: flex; align-items: center; gap: 6px; z-index: 500;
+  background: rgba(0,0,0,.8); backdrop-filter: blur(8px);
+  border: 0.5px solid rgba(255,255,255,.1);
+  border-radius: 100px; padding: 5px 10px;
+  font-size: 11px; display: flex; align-items: center; gap: 5px; z-index: 500;
 }
-.gps-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--dim); flex-shrink: 0; }
+.gps-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--dim); flex-shrink: 0; }
 .track-footer {
-  padding: 14px 16px;
-  padding-bottom: max(14px, env(safe-area-inset-bottom));
-  background: var(--bg); border-top: 1px solid var(--border);
-  display: flex; gap: 12px; flex-shrink: 0;
+  padding: 12px 16px;
+  padding-bottom: max(12px, env(safe-area-inset-bottom));
+  background: var(--bg); border-top: 0.5px solid var(--border);
+  display: flex; gap: 10px; flex-shrink: 0;
 }
 .lm-btn {
-  flex: 1; padding: 16px; background: var(--bg2); color: var(--text);
-  border: 1px solid var(--border); border-radius: 14px;
-  font-size: 15px; font-weight: 600; cursor: pointer;
-  display: flex; align-items: center; justify-content: center; gap: 8px;
+  flex: 1; padding: 13px; background: var(--bg2); color: var(--text);
+  border: 0.5px solid var(--border); border-radius: 10px;
+  font-size: 14px; font-weight: 600; cursor: pointer;
+  display: flex; align-items: center; justify-content: center; gap: 6px;
   transition: background .15s;
 }
 .lm-btn:active { background: var(--bg3); }
 .stop-btn {
-  flex: 1; padding: 16px; background: var(--red); color: white;
-  border: none; border-radius: 14px;
-  font-size: 15px; font-weight: 700; cursor: pointer;
-  display: flex; align-items: center; justify-content: center; gap: 8px;
-  box-shadow: 0 4px 14px rgba(239,68,68,.4);
+  flex: 1; padding: 13px; background: var(--red); color: white;
+  border: none; border-radius: 10px; font-size: 14px; font-weight: 700;
+  cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 6px;
+  box-shadow: 0 4px 12px rgba(255,55,95,.35);
   transition: opacity .15s, transform .15s;
 }
-.stop-btn:active { opacity: .85; transform: scale(.97); }
+.stop-btn:active { opacity: .85; transform: scale(.98); }
 
 /* DETAIL SCREEN */
-#detail-screen .map-half { height: 38vh; flex-shrink: 0; position: relative; }
+#detail-screen .map-half { height: 36vh; flex-shrink: 0; position: relative; }
 #detail-screen .map-half .leaflet-container { width: 100%; height: 100%; }
 #detail-screen .info-scroll {
-  flex: 1; overflow-y: auto; padding: 20px 16px;
-  padding-bottom: max(24px, env(safe-area-inset-bottom));
+  flex: 1; overflow-y: auto; padding: 14px 16px;
+  padding-bottom: max(20px, env(safe-area-inset-bottom));
 }
-.stats-row { display: flex; gap: 10px; margin-bottom: 20px; }
-.stat-card {
-  flex: 1; background: var(--bg2); border: 1px solid var(--border);
-  border-radius: 12px; padding: 14px; text-align: center;
-}
-.stat-card .sv { font-size: 22px; font-weight: 800; color: var(--orange); }
-.stat-card .sl { font-size: 11px; color: var(--dim); margin-top: 2px; }
+.d-metrics { display: flex; gap: 0; margin-bottom: 16px; padding: 14px; background: var(--bg2); border-radius: 12px; }
+.d-metric { flex: 1; text-align: center; }
+.d-metric + .d-metric { border-left: 0.5px solid var(--border); }
+.d-metric .dv { font-size: 20px; font-weight: 800; line-height: 1; }
+.d-metric .dl { font-size: 10px; color: var(--dim); margin-top: 2px; }
 .lm-item {
-  display: flex; gap: 12px; padding: 14px 0;
-  border-bottom: 1px solid var(--border); align-items: flex-start;
+  display: flex; gap: 10px; padding: 12px 0;
+  border-bottom: 0.5px solid var(--border); align-items: flex-start;
 }
 .lm-item:last-child { border-bottom: none; }
 .lm-thumb {
-  width: 68px; height: 68px; flex-shrink: 0;
-  border-radius: 10px; object-fit: cover; background: var(--bg3);
+  width: 60px; height: 60px; flex-shrink: 0;
+  border-radius: 8px; object-fit: cover; background: var(--bg2);
 }
-.lm-thumb.icon-thumb { display: flex; align-items: center; justify-content: center; font-size: 28px; }
+.lm-thumb.icon-thumb { display: flex; align-items: center; justify-content: center; font-size: 24px; }
 .tag-chip {
-  display: inline-block; font-size: 11px; font-weight: 700;
-  padding: 3px 9px; border-radius: 100px;
-  background: var(--orange); color: white; margin-bottom: 5px;
+  display: inline-block; font-size: 10px; font-weight: 700;
+  padding: 2px 8px; border-radius: 100px;
+  background: var(--orange); color: #000; margin-bottom: 4px;
 }
-.lm-note { font-size: 14px; color: var(--text); line-height: 1.5; }
-.lm-time { font-size: 12px; color: var(--dim); margin-top: 4px; }
+.lm-note { font-size: 13px; color: var(--text); line-height: 1.5; }
+.lm-time { font-size: 11px; color: var(--dim); margin-top: 3px; }
+.section-label {
+  font-size: 10px; font-weight: 700; letter-spacing: .06em;
+  text-transform: uppercase; color: var(--dim); margin-bottom: 10px;
+}
 
 /* STATS SCREEN */
 #stats-screen .scroll {
-  flex: 1; overflow-y: auto; padding: 20px 16px;
-  padding-bottom: calc(76px + env(safe-area-inset-bottom));
+  flex: 1; overflow-y: auto; padding: 0;
+  padding-bottom: calc(58px + env(safe-area-inset-bottom));
 }
-.summary-grid { display: grid; grid-template-columns: repeat(3,1fr); gap: 10px; margin-bottom: 28px; }
-.summary-card {
-  background: var(--bg2); border: 1px solid var(--border);
-  border-radius: 16px; padding: 16px 10px; text-align: center;
+.stats-hero {
+  display: flex; padding: 16px; gap: 0;
+  border-bottom: 0.5px solid var(--border);
 }
-.summary-card .sv { font-size: 24px; font-weight: 800; color: var(--orange); }
-.summary-card .sl { font-size: 11px; color: var(--dim); margin-top: 3px; }
-.month-row { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
-.month-label { font-size: 12px; color: var(--dim); width: 36px; flex-shrink: 0; text-align: right; }
-.month-bar-wrap { flex: 1; background: var(--bg2); border-radius: 6px; height: 20px; overflow: hidden; }
-.month-bar { height: 100%; background: var(--orange); border-radius: 6px; transition: width .6s ease; }
-.month-count { font-size: 12px; color: var(--dim); width: 24px; flex-shrink: 0; }
-.tag-row { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
-.tag-row-label { font-size: 13px; width: 60px; flex-shrink: 0; }
-.tag-row-bar-wrap { flex: 1; background: var(--bg2); border-radius: 6px; height: 16px; overflow: hidden; }
-.tag-row-bar { height: 100%; background: var(--cyan); border-radius: 6px; }
-.tag-row-count { font-size: 12px; color: var(--dim); width: 24px; flex-shrink: 0; }
-.top-stats-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-.top-stat-card {
-  background: var(--bg2); border: 1px solid var(--border);
-  border-radius: 14px; padding: 14px;
-}
-.top-stat-card .ts-label { font-size: 11px; color: var(--dim); margin-bottom: 4px; }
-.top-stat-card .ts-val   { font-size: 18px; font-weight: 800; }
-.top-stat-card .ts-sub   { font-size: 11px; color: var(--dim); margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.stats-hero-col { flex: 1; }
+.stats-hero-col + .stats-hero-col { border-left: 0.5px solid var(--border); padding-left: 16px; }
+.shc-label { font-size: 10px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; margin-bottom: 2px; }
+.shc-val   { font-size: 28px; font-weight: 800; line-height: 1; font-variant-numeric: tabular-nums; }
+.shc-unit  { font-size: 11px; margin-left: 2px; opacity: .7; font-weight: 600; }
+.sh-red   .shc-label, .sh-red   .shc-val { color: var(--red); }
+.sh-green .shc-label, .sh-green .shc-val { color: var(--green); }
+.sh-cyan  .shc-label, .sh-cyan  .shc-val { color: var(--cyan); }
+
+.stats-section { padding: 16px; border-bottom: 0.5px solid var(--border); }
+.stats-section-title { font-size: 10px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--dim); margin-bottom: 14px; }
+.month-row { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+.month-label { font-size: 11px; color: var(--dim); width: 30px; text-align: right; flex-shrink: 0; }
+.month-bar-wrap { flex: 1; background: var(--bg2); border-radius: 4px; height: 16px; overflow: hidden; }
+.month-bar { height: 100%; background: var(--orange); border-radius: 4px; transition: width .6s ease; }
+.month-count { font-size: 11px; color: var(--dim); width: 20px; flex-shrink: 0; }
+.tag-row { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
+.tag-row-label { font-size: 12px; width: 56px; flex-shrink: 0; }
+.tag-row-bar-wrap { flex: 1; background: var(--bg2); border-radius: 4px; height: 12px; overflow: hidden; }
+.tag-row-bar { height: 100%; background: var(--cyan); border-radius: 4px; }
+.tag-row-count { font-size: 11px; color: var(--dim); width: 20px; flex-shrink: 0; }
+.top-stats-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.top-stat-card { background: var(--bg2); border-radius: 10px; padding: 12px; }
+.ts-label { font-size: 10px; color: var(--dim); margin-bottom: 3px; }
+.ts-val   { font-size: 16px; font-weight: 800; }
+.ts-sub   { font-size: 10px; color: var(--dim); margin-top: 2px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
 /* ALBUM SCREEN */
 #album-screen .scroll {
-  flex: 1; overflow-y: auto; padding: 12px;
-  padding-bottom: calc(76px + env(safe-area-inset-bottom));
+  flex: 1; overflow-y: auto; padding: 8px;
+  padding-bottom: calc(58px + env(safe-area-inset-bottom));
 }
-.album-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
-.album-item {
-  border-radius: 12px; overflow: hidden;
-  position: relative; aspect-ratio: 1;
-  background: var(--bg3); cursor: pointer;
-}
+.album-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+.album-item { border-radius: 10px; overflow: hidden; position: relative; aspect-ratio: 1; background: var(--bg2); cursor: pointer; }
 .album-item img { width: 100%; height: 100%; object-fit: cover; display: block; }
-.album-item .album-meta {
-  position: absolute; bottom: 0; left: 0; right: 0;
-  padding: 8px 10px;
-  background: linear-gradient(transparent, rgba(0,0,0,.75));
-  font-size: 11px; color: white; font-weight: 600;
+.album-meta {
+  position: absolute; bottom: 0; left: 0; right: 0; padding: 6px 8px;
+  background: linear-gradient(transparent, rgba(0,0,0,.8));
+  font-size: 10px; color: white; font-weight: 600;
 }
 .album-tag {
-  display: inline-block; background: var(--orange); color: white;
-  font-size: 10px; font-weight: 700; padding: 2px 6px;
-  border-radius: 4px; margin-bottom: 2px;
+  display: inline-block; background: var(--orange); color: #000;
+  font-size: 9px; font-weight: 700; padding: 1px 5px; border-radius: 3px; margin-bottom: 2px;
 }
 
 /* LIGHTBOX */
 #lightbox {
-  position: fixed; inset: 0; background: rgba(0,0,0,.92);
+  position: fixed; inset: 0; background: rgba(0,0,0,.95);
   z-index: 300; display: flex; flex-direction: column;
   align-items: center; justify-content: center;
-  opacity: 0; pointer-events: none; transition: opacity .25s;
+  opacity: 0; pointer-events: none; transition: opacity .2s;
 }
 #lightbox.open { opacity: 1; pointer-events: all; }
 #lightbox img { max-width: 100%; max-height: 75vh; object-fit: contain; border-radius: 8px; }
-#lightbox .lb-info { margin-top: 14px; text-align: center; }
-#lightbox .lb-ride { font-size: 14px; color: var(--dim); }
-#lightbox .lb-tag  { font-size: 13px; color: var(--orange); font-weight: 700; margin-top: 4px; }
+#lightbox .lb-info { margin-top: 12px; text-align: center; }
+#lightbox .lb-ride { font-size: 13px; color: var(--dim); }
+#lightbox .lb-tag  { font-size: 12px; color: var(--orange); font-weight: 700; margin-top: 3px; }
 #lightbox .lb-close {
-  position: absolute; top: max(16px, env(safe-area-inset-top)); right: 16px;
-  width: 36px; height: 36px; background: rgba(255,255,255,.12);
-  border: none; border-radius: 50%; color: white; font-size: 18px;
+  position: absolute; top: max(14px, env(safe-area-inset-top)); right: 14px;
+  width: 32px; height: 32px; background: var(--bg3);
+  border: none; border-radius: 50%; color: white; font-size: 16px;
   cursor: pointer; display: flex; align-items: center; justify-content: center;
 }
 
 /* MODALS */
 .overlay {
-  position: fixed; inset: 0; background: rgba(0,0,0,.72);
+  position: fixed; inset: 0; background: rgba(0,0,0,.75);
   z-index: 200; display: flex; align-items: flex-end;
-  opacity: 0; pointer-events: none; transition: opacity .25s;
+  opacity: 0; pointer-events: none; transition: opacity .2s;
 }
 .overlay.open { opacity: 1; pointer-events: all; }
 .sheet {
   width: 100%; background: var(--bg2);
-  border-radius: 24px 24px 0 0;
-  padding: 16px 20px max(20px, env(safe-area-inset-bottom));
+  border-radius: 18px 18px 0 0;
+  padding: 14px 18px max(18px, env(safe-area-inset-bottom));
   transform: translateY(100%);
-  transition: transform .3s cubic-bezier(0.4,0,0.2,1);
+  transition: transform .28s cubic-bezier(0.4,0,0.2,1);
 }
 .overlay.open .sheet { transform: translateY(0); }
-.sheet-handle { width: 36px; height: 4px; background: var(--bg3); border-radius: 2px; margin: 0 auto 20px; }
-.sheet h3 { font-size: 18px; font-weight: 700; margin-bottom: 18px; }
+.sheet-handle { width: 32px; height: 3px; background: var(--bg4); border-radius: 2px; margin: 0 auto 16px; }
+.sheet h3 { font-size: 16px; font-weight: 700; margin-bottom: 14px; }
 .photo-area {
-  width: 100%; height: 150px;
-  background: var(--bg3); border: 2px dashed var(--border);
-  border-radius: 14px; position: relative; overflow: hidden;
+  width: 100%; height: 130px; background: var(--bg3);
+  border: 1.5px dashed var(--bg4); border-radius: 10px;
+  position: relative; overflow: hidden;
   display: flex; flex-direction: column;
   align-items: center; justify-content: center;
-  gap: 6px; color: var(--dim); margin-bottom: 14px; cursor: pointer;
+  gap: 5px; color: var(--dim); margin-bottom: 12px; cursor: pointer;
 }
 .photo-area img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
-.photo-area .ph-icon { font-size: 30px; }
-.photo-area .ph-text { font-size: 13px; }
+.photo-area .ph-icon { font-size: 26px; }
+.photo-area .ph-text { font-size: 12px; }
 .photo-area input[type=file] { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
-.tags-wrap { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 14px; }
+.tags-wrap { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 12px; }
 .tag-btn {
-  padding: 8px 14px; border-radius: 100px;
-  border: 1px solid var(--border); background: var(--bg3);
-  color: var(--dim); font-size: 13px; cursor: pointer;
+  padding: 7px 12px; border-radius: 100px;
+  border: 0.5px solid var(--border); background: var(--bg3);
+  color: var(--dim); font-size: 12px; cursor: pointer;
   transition: all .15s; user-select: none;
 }
-.tag-btn.on { background: var(--orange); border-color: var(--orange); color: white; }
+.tag-btn.on { background: var(--orange); border-color: var(--orange); color: #000; font-weight: 700; }
 .note-ta {
-  width: 100%; background: var(--bg3);
-  border: 1px solid var(--border); border-radius: 12px;
-  color: var(--text); padding: 13px; font-size: 15px;
+  width: 100%; background: var(--bg3); border: 0.5px solid var(--border);
+  border-radius: 10px; color: var(--text); padding: 11px 12px; font-size: 14px;
   resize: none; font-family: inherit; outline: none;
-  margin-bottom: 14px; transition: border-color .15s;
+  margin-bottom: 12px; transition: border-color .15s;
 }
 .note-ta:focus { border-color: var(--orange); }
 .btn-primary {
-  width: 100%; padding: 16px; background: var(--orange); color: white;
-  border: none; border-radius: 14px; font-size: 16px; font-weight: 700;
+  width: 100%; padding: 14px; background: var(--orange); color: #000;
+  border: none; border-radius: 10px; font-size: 15px; font-weight: 700;
   cursor: pointer; transition: opacity .15s, transform .15s;
 }
-.btn-primary:active { opacity: .85; transform: scale(.97); }
-.confirm-row { display: flex; gap: 10px; margin-top: 6px; }
+.btn-primary:active { opacity: .85; transform: scale(.98); }
+.confirm-row { display: flex; gap: 8px; margin-top: 4px; }
 .btn-ghost {
-  flex: 1; padding: 14px; background: var(--bg3); color: var(--text);
-  border: none; border-radius: 12px; font-size: 15px; font-weight: 600; cursor: pointer;
+  flex: 1; padding: 13px; background: var(--bg3); color: var(--text);
+  border: none; border-radius: 10px; font-size: 14px; font-weight: 600; cursor: pointer;
 }
 .btn-red {
-  flex: 1; padding: 14px; background: var(--red); color: white;
-  border: none; border-radius: 12px; font-size: 15px; font-weight: 700; cursor: pointer;
+  flex: 1; padding: 13px; background: var(--red); color: white;
+  border: none; border-radius: 10px; font-size: 14px; font-weight: 700; cursor: pointer;
 }
-.confirm-msg { font-size: 14px; color: var(--dim); margin-bottom: 16px; }
+.confirm-msg { font-size: 13px; color: var(--dim); margin-bottom: 14px; }
 
 /* STARS */
-.star-row { display: flex; gap: 10px; margin-bottom: 18px; }
+.star-row { display: flex; gap: 8px; margin-bottom: 14px; }
 .star-btn {
-  font-size: 30px; cursor: pointer;
-  filter: grayscale(1) opacity(.3);
-  transition: filter .15s, transform .1s;
-  user-select: none;
+  font-size: 28px; cursor: pointer;
+  filter: grayscale(1) opacity(.25);
+  transition: filter .15s, transform .1s; user-select: none;
 }
 .star-btn.on { filter: none; }
 .star-btn:active { transform: scale(1.2); }
 
-/* ROUTE TAG BUTTONS (in rate overlay) */
+/* ROUTE TAG BUTTONS */
 .rtag-btn {
-  padding: 8px 14px; border-radius: 100px;
-  border: 1px solid var(--border); background: var(--bg3);
-  color: var(--dim); font-size: 13px; cursor: pointer;
+  padding: 7px 12px; border-radius: 100px;
+  border: 0.5px solid var(--border); background: var(--bg3);
+  color: var(--dim); font-size: 12px; cursor: pointer;
   transition: all .15s; user-select: none;
 }
-.rtag-btn.on { background: var(--cyan); border-color: var(--cyan); color: var(--bg); font-weight: 700; }
+.rtag-btn.on { background: var(--cyan); border-color: var(--cyan); color: #000; font-weight: 700; }
 
 /* TOAST */
 .toast {
-  position: fixed;
-  bottom: calc(68px + env(safe-area-inset-bottom));
-  left: 50%; transform: translateX(-50%) translateY(20px);
-  background: rgba(17,24,39,.95); color: white;
-  border: 1px solid rgba(255,255,255,.12);
-  padding: 10px 20px; border-radius: 100px;
-  font-size: 14px; font-weight: 500; z-index: 999;
-  opacity: 0; transition: opacity .25s, transform .25s;
+  position: fixed; bottom: calc(58px + env(safe-area-inset-bottom));
+  left: 50%; transform: translateX(-50%) translateY(16px);
+  background: rgba(30,30,30,.96); color: white;
+  border: 0.5px solid rgba(255,255,255,.1);
+  padding: 9px 18px; border-radius: 100px;
+  font-size: 13px; font-weight: 500; z-index: 999;
+  opacity: 0; transition: opacity .2s, transform .2s;
   white-space: nowrap; pointer-events: none;
 }
 .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
@@ -417,44 +436,64 @@ html, body {
 
 <!-- HOME SCREEN -->
 <div id="home-screen" class="screen active">
-  <div class="topbar"><h1>🏍 重機日誌</h1></div>
+  <div class="topbar">
+    <h1>重機日誌</h1>
+    <span class="tb-date" id="today-date"></span>
+  </div>
   <div class="filter-wrap">
     <div class="filter-chip active" onclick="App.setFilter(this,'')">全部</div>
-    <div class="filter-chip" onclick="App.setFilter(this,'山路')">🏔 山路</div>
-    <div class="filter-chip" onclick="App.setFilter(this,'海岸')">🌊 海岸</div>
-    <div class="filter-chip" onclick="App.setFilter(this,'市區')">🏙 市區</div>
-    <div class="filter-chip" onclick="App.setFilter(this,'郊遊')">🌿 郊遊</div>
-    <div class="filter-chip" onclick="App.setFilter(this,'跑山')">⚡ 跑山</div>
+    <div class="filter-chip" onclick="App.setFilter(this,'山路')">山路</div>
+    <div class="filter-chip" onclick="App.setFilter(this,'海岸')">海岸</div>
+    <div class="filter-chip" onclick="App.setFilter(this,'市區')">市區</div>
+    <div class="filter-chip" onclick="App.setFilter(this,'郊遊')">郊遊</div>
+    <div class="filter-chip" onclick="App.setFilter(this,'跑山')">跑山</div>
+  </div>
+  <div class="summary-strip" id="home-summary">
+    <div class="summary-col col-red">
+      <div class="sc-label">距離</div>
+      <div><span class="sc-val" id="ss-km">0</span><span class="sc-unit">km</span></div>
+    </div>
+    <div class="summary-col col-green">
+      <div class="sc-label">時數</div>
+      <div><span class="sc-val" id="ss-hr">0</span><span class="sc-unit">hr</span></div>
+    </div>
+    <div class="summary-col col-cyan">
+      <div class="sc-label">次數</div>
+      <div><span class="sc-val" id="ss-ct">0</span><span class="sc-unit">次</span></div>
+    </div>
   </div>
   <div class="scroll">
-    <div class="hero">
-      <div class="hero-icon">🏍</div>
-      <h2>準備出發了嗎？</h2>
-      <p>記錄每一段精彩路線</p>
+    <div class="start-row">
+      <button class="start-btn" onclick="App.startRide()">▶ 開始新路線</button>
     </div>
-    <button class="start-btn" onclick="App.startRide()"><span>▶</span> 開始新路線</button>
-    <div class="section-label">騎乘記錄</div>
+    <div class="list-header">騎乘記錄</div>
     <div id="rides-list"></div>
   </div>
 </div>
 
 <!-- STATS SCREEN -->
 <div id="stats-screen" class="screen">
-  <div class="topbar"><h1>📊 騎乘統計</h1></div>
+  <div class="topbar"><h1>統計</h1></div>
   <div class="scroll">
-    <div class="summary-grid" id="stats-summary"></div>
-    <div class="section-label" style="margin-bottom:16px">近 6 個月</div>
-    <div id="month-chart" style="margin-bottom:28px"></div>
-    <div class="section-label" style="margin-bottom:16px">路線類型</div>
-    <div id="tag-breakdown" style="margin-bottom:28px"></div>
-    <div class="section-label" style="margin-bottom:16px">最佳紀錄</div>
-    <div class="top-stats-grid" id="top-stats"></div>
+    <div class="stats-hero" id="stats-hero"></div>
+    <div class="stats-section">
+      <div class="stats-section-title">近 6 個月</div>
+      <div id="month-chart"></div>
+    </div>
+    <div class="stats-section">
+      <div class="stats-section-title">路線類型</div>
+      <div id="tag-breakdown"></div>
+    </div>
+    <div class="stats-section">
+      <div class="stats-section-title">最佳紀錄</div>
+      <div class="top-stats-grid" id="top-stats"></div>
+    </div>
   </div>
 </div>
 
 <!-- ALBUM SCREEN -->
 <div id="album-screen" class="screen">
-  <div class="topbar"><h1>🖼 地標相簿</h1></div>
+  <div class="topbar"><h1>地標相簿</h1></div>
   <div class="scroll">
     <div class="album-grid" id="album-grid"></div>
   </div>
@@ -484,7 +523,7 @@ html, body {
     </div>
   </div>
   <div class="track-footer">
-    <button class="lm-btn" onclick="App.openLandmarkModal()">📍 新增地標</button>
+    <button class="lm-btn" onclick="App.openLandmarkModal()">📍 地標</button>
     <button class="stop-btn" onclick="App.openStopModal()">⏹ 停止</button>
   </div>
 </div>
@@ -493,17 +532,17 @@ html, body {
 <div id="detail-screen" class="screen">
   <div class="topbar">
     <button class="icon-btn gray" onclick="App.goHome()">←</button>
-    <h1 id="detail-title">路線</h1>
-    <button class="icon-btn gray" onclick="App.shareRide()" style="font-size:18px">↑</button>
+    <h1 id="detail-title" style="font-size:15px">路線</h1>
+    <button class="icon-btn gray" onclick="App.shareRide()" style="font-size:16px">↑</button>
     <button class="icon-btn red"  onclick="App.deleteRide()">✕</button>
   </div>
   <div class="map-half"><div id="leaflet-detail" style="width:100%;height:100%"></div></div>
   <div class="info-scroll">
     <div id="detail-header"></div>
-    <div class="stats-row">
-      <div class="stat-card"><div class="sv" id="d-dist">-</div><div class="sl">公里</div></div>
-      <div class="stat-card"><div class="sv" id="d-dur">-</div><div class="sl">時長</div></div>
-      <div class="stat-card"><div class="sv" id="d-lm">-</div><div class="sl">地標</div></div>
+    <div class="d-metrics" id="d-metrics">
+      <div class="d-metric"><div class="dv" id="d-dist" style="color:var(--red)">-</div><div class="dl">公里</div></div>
+      <div class="d-metric"><div class="dv" id="d-dur"  style="color:var(--green)">-</div><div class="dl">時長</div></div>
+      <div class="d-metric"><div class="dv" id="d-lm"   style="color:var(--cyan)">-</div><div class="dl">地標</div></div>
     </div>
     <div class="section-label">地標記錄</div>
     <div id="detail-lm-list"></div>
@@ -514,10 +553,9 @@ html, body {
 <div class="overlay" id="lm-overlay" onclick="App.overlayClick(event,'lm-overlay')">
   <div class="sheet">
     <div class="sheet-handle"></div>
-    <h3>📍 新增地標</h3>
+    <h3>新增地標</h3>
     <div class="photo-area" id="photo-area">
-      <input type="file" accept="image/*" capture="environment"
-             id="photo-input" onchange="App.onPhotoChange(this)">
+      <input type="file" accept="image/*" capture="environment" id="photo-input" onchange="App.onPhotoChange(this)">
       <div class="ph-icon">📷</div>
       <div class="ph-text">拍照 / 選圖片</div>
     </div>
@@ -529,7 +567,7 @@ html, body {
       <div class="tag-btn" onclick="App.toggleTag(this,'危險路段')">⚠️ 危險</div>
       <div class="tag-btn" onclick="App.toggleTag(this,'推薦路段')">⭐ 推薦</div>
     </div>
-    <textarea class="note-ta" id="lm-note" rows="3" placeholder="寫下你的想法、路況、推薦原因…"></textarea>
+    <textarea class="note-ta" id="lm-note" rows="3" placeholder="寫下你的想法、路況…"></textarea>
     <button class="btn-primary" onclick="App.saveLandmark()">儲存地標</button>
   </div>
 </div>
@@ -539,7 +577,7 @@ html, body {
   <div class="sheet">
     <div class="sheet-handle"></div>
     <h3>結束這段路線？</h3>
-    <p class="confirm-msg">目前已騎 <span id="confirm-dist">0.0</span> 公里，記錄將自動儲存。</p>
+    <p class="confirm-msg">目前已騎 <span id="confirm-dist">0.0</span> 公里</p>
     <div class="confirm-row">
       <button class="btn-ghost" onclick="App.closeOverlay('stop-overlay')">繼續騎</button>
       <button class="btn-red"   onclick="App.stopRide()">結束路線</button>
@@ -566,7 +604,7 @@ html, body {
       <div class="rtag-btn" onclick="App.toggleRouteTag(this,'郊遊')">🌿 郊遊</div>
       <div class="rtag-btn" onclick="App.toggleRouteTag(this,'跑山')">⚡ 跑山</div>
     </div>
-    <textarea class="note-ta" id="rate-note" rows="3" placeholder="這段路線有什麼值得記錄的？（選填）"></textarea>
+    <textarea class="note-ta" id="rate-note" rows="2" placeholder="這段路線有什麼值得記錄的？（選填）"></textarea>
     <button class="btn-primary" onclick="App.saveRating()">完成</button>
   </div>
 </div>
@@ -581,7 +619,6 @@ html, body {
   </div>
 </div>
 
-<!-- Toast -->
 <div class="toast" id="toast"></div>
 
 <!-- Bottom Nav -->
@@ -603,31 +640,30 @@ html, body {
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
 const App = {
-  rides: [],
-  activeRide: null,
-  watchId: null,
-  timer: null,
-  trackMap: null,
-  trackLine: null,
-  trackDot: null,
-  detailMap: null,
-  selectedTag: null,
-  photoData: null,
-  viewingId: null,
-  pendingRateId: null,
-  pendingRating: 0,
-  pendingRouteTags: [],
-  activeFilter: '',
-  _albumPhotos: [],
+  rides: [], activeRide: null,
+  watchId: null, timer: null,
+  trackMap: null, trackLine: null, trackDot: null, detailMap: null,
+  selectedTag: null, photoData: null, viewingId: null,
+  pendingRateId: null, pendingRating: 0, pendingRouteTags: [],
+  activeFilter: '', _albumPhotos: [],
 
   init() {
-    try { this.rides = JSON.parse(localStorage.getItem('mj_rides') || '[]'); }
-    catch(e) { this.rides = []; }
+    try { this.rides = JSON.parse(localStorage.getItem('mj_rides') || '[]'); } catch(e) { this.rides = []; }
+    const d = new Date();
+    document.getElementById('today-date').textContent = d.toLocaleDateString('zh-TW',{month:'short',day:'numeric'});
     this.renderHomeList();
+    this.updateSummaryStrip();
     if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(()=>{});
   },
 
-  // ---- Screen nav ----
+  updateSummaryStrip() {
+    const km = this.rides.reduce((s,r)=>s+(r.distance||0),0);
+    const hr = this.rides.reduce((s,r)=>s+((r.endTime||r.startTime)-r.startTime),0)/3600000;
+    document.getElementById('ss-km').textContent = km.toFixed(0);
+    document.getElementById('ss-hr').textContent = hr.toFixed(1);
+    document.getElementById('ss-ct').textContent = this.rides.length;
+  },
+
   showScreen(id) {
     const prev = document.querySelector('.screen.active');
     document.querySelectorAll('.screen').forEach(s => s.classList.remove('active','behind'));
@@ -647,15 +683,13 @@ const App = {
 
   goHome() {
     if (this.detailMap) { this.detailMap.remove(); this.detailMap = null; }
-    this.renderHomeList();
+    this.renderHomeList(); this.updateSummaryStrip();
     this.goTab('home');
   },
 
-  // ---- Start Ride ----
   startRide() {
     this.activeRide = {
-      id: Date.now(),
-      name: '路線 ' + (this.rides.length + 1),
+      id: Date.now(), name: '路線 '+(this.rides.length+1),
       date: Date.now(), startTime: Date.now(), endTime: null,
       points: [], landmarks: [], distance: 0,
       rating: 0, note: '', routeTags: [], weather: null,
@@ -666,420 +700,358 @@ const App = {
 
   initTrackMap() {
     if (!this.trackMap) {
-      this.trackMap = L.map('leaflet-track', { zoomControl:false, attributionControl:false });
-      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom:19 }).addTo(this.trackMap);
+      this.trackMap = L.map('leaflet-track',{zoomControl:false,attributionControl:false});
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19}).addTo(this.trackMap);
     }
-    if (this.trackLine) { this.trackLine.remove(); this.trackLine = null; }
-    if (this.trackDot)  { this.trackDot.remove();  this.trackDot  = null; }
-    this.trackLine = L.polyline([], { color:'#f97316', weight:5, opacity:.9 }).addTo(this.trackMap);
-    this.startGPS();
-    this.startTimer();
+    if (this.trackLine){this.trackLine.remove();this.trackLine=null;}
+    if (this.trackDot) {this.trackDot.remove(); this.trackDot=null;}
+    this.trackLine = L.polyline([],{color:'#ff375f',weight:5,opacity:.9}).addTo(this.trackMap);
+    this.startGPS(); this.startTimer();
   },
 
-  // ---- GPS ----
   startGPS() {
-    if (!navigator.geolocation) { this.setGPSStatus('error','GPS 不支援'); return; }
+    if (!navigator.geolocation){this.setGPSStatus('error','GPS 不支援');return;}
     this.setGPSStatus('waiting','取得 GPS 中…');
     this.watchId = navigator.geolocation.watchPosition(
-      pos => this.onPosition(pos),
-      ()  => this.setGPSStatus('error','GPS 錯誤'),
-      { enableHighAccuracy:true, maximumAge:3000, timeout:15000 }
+      pos=>this.onPosition(pos),
+      ()=>this.setGPSStatus('error','GPS 錯誤'),
+      {enableHighAccuracy:true,maximumAge:3000,timeout:15000}
     );
   },
 
   onPosition(pos) {
-    const { latitude:lat, longitude:lng, speed, accuracy } = pos.coords;
-    this.setGPSStatus('ok', `精確度 ±${Math.round(accuracy)}m`);
-    const lastPt = this.activeRide.points.at(-1);
-
-    if (!lastPt && !this.activeRide.weather) {
-      this.fetchWeather(lat, lng).then(w => { if (this.activeRide) this.activeRide.weather = w; });
-    }
-
-    this.activeRide.points.push({ lat, lng, t: Date.now() });
-    if (lastPt) this.activeRide.distance += this.haversine(lastPt.lat, lastPt.lng, lat, lng);
-
-    const ll = [lat, lng];
+    const {latitude:lat,longitude:lng,speed,accuracy}=pos.coords;
+    this.setGPSStatus('ok',`±${Math.round(accuracy)}m`);
+    const lastPt=this.activeRide.points.at(-1);
+    if (!lastPt&&!this.activeRide.weather) this.fetchWeather(lat,lng).then(w=>{if(this.activeRide)this.activeRide.weather=w;});
+    this.activeRide.points.push({lat,lng,t:Date.now()});
+    if (lastPt) this.activeRide.distance+=this.haversine(lastPt.lat,lastPt.lng,lat,lng);
+    const ll=[lat,lng];
     this.trackLine.addLatLng(ll);
-    const dotHtml = '<div style="width:16px;height:16px;background:#f97316;border:3px solid white;border-radius:50%;box-shadow:0 2px 8px rgba(0,0,0,.5)"></div>';
+    const dh='<div style="width:14px;height:14px;background:#ff375f;border:2.5px solid white;border-radius:50%;box-shadow:0 2px 6px rgba(0,0,0,.5)"></div>';
     if (!this.trackDot) {
-      this.trackDot = L.marker(ll, { icon: L.divIcon({ className:'', html:dotHtml, iconSize:[16,16], iconAnchor:[8,8] }) }).addTo(this.trackMap);
-      this.trackMap.setView(ll, 15);
-    } else {
-      this.trackDot.setLatLng(ll);
-      this.trackMap.panTo(ll, { animate:true, duration:.5 });
-    }
-    document.getElementById('sv-speed').textContent = speed != null ? Math.round(speed*3.6) : '—';
-    document.getElementById('sv-dist').textContent  = this.activeRide.distance.toFixed(1);
+      this.trackDot=L.marker(ll,{icon:L.divIcon({className:'',html:dh,iconSize:[14,14],iconAnchor:[7,7]})}).addTo(this.trackMap);
+      this.trackMap.setView(ll,15);
+    } else { this.trackDot.setLatLng(ll); this.trackMap.panTo(ll,{animate:true,duration:.5}); }
+    document.getElementById('sv-speed').textContent=speed!=null?Math.round(speed*3.6):'—';
+    document.getElementById('sv-dist').textContent=this.activeRide.distance.toFixed(1);
   },
 
-  setGPSStatus(state, text) {
-    document.getElementById('gps-dot').style.background =
-      state==='ok' ? '#22c55e' : state==='error' ? '#ef4444' : '#9ca3af';
-    document.getElementById('gps-text').textContent = text;
+  setGPSStatus(s,t) {
+    document.getElementById('gps-dot').style.background=s==='ok'?'#30d158':s==='error'?'#ff375f':'#8e8e93';
+    document.getElementById('gps-text').textContent=t;
   },
 
   startTimer() {
-    const t0 = Date.now();
-    clearInterval(this.timer);
-    this.timer = setInterval(() => {
-      const ms = Date.now() - t0;
-      const m = Math.floor(ms/60000), s = Math.floor((ms%60000)/1000);
-      document.getElementById('sv-time').textContent = String(m).padStart(2,'0')+':'+String(s).padStart(2,'0');
-    }, 1000);
+    const t0=Date.now(); clearInterval(this.timer);
+    this.timer=setInterval(()=>{
+      const ms=Date.now()-t0,m=Math.floor(ms/60000),s=Math.floor((ms%60000)/1000);
+      document.getElementById('sv-time').textContent=String(m).padStart(2,'0')+':'+String(s).padStart(2,'0');
+    },1000);
   },
 
-  // ---- Stop Ride ----
   openStopModal() {
-    document.getElementById('confirm-dist').textContent = (this.activeRide?.distance||0).toFixed(1);
+    document.getElementById('confirm-dist').textContent=(this.activeRide?.distance||0).toFixed(1);
     this.openOverlay('stop-overlay');
   },
 
   stopRide() {
     this.closeOverlay('stop-overlay');
-    if (this.watchId != null) { navigator.geolocation.clearWatch(this.watchId); this.watchId = null; }
+    if (this.watchId!=null){navigator.geolocation.clearWatch(this.watchId);this.watchId=null;}
     clearInterval(this.timer);
-    this.activeRide.endTime = Date.now();
-    if (this.trackDot) { this.trackDot.remove(); this.trackDot = null; }
+    this.activeRide.endTime=Date.now();
+    if (this.trackDot){this.trackDot.remove();this.trackDot=null;}
     this.rides.unshift(this.activeRide);
     this.saveRides();
-    this.pendingRateId = this.activeRide.id;
-    this.activeRide = null;
+    this.pendingRateId=this.activeRide.id;
+    this.activeRide=null;
     this.openRateOverlay();
   },
 
-  // ---- Rate Ride ----
   openRateOverlay() {
-    this.pendingRating = 0;
-    this.pendingRouteTags = [];
-    document.getElementById('rate-note').value = '';
-    document.querySelectorAll('#star-row .star-btn').forEach(s => s.classList.remove('on'));
-    document.querySelectorAll('.rtag-btn').forEach(b => b.classList.remove('on'));
+    this.pendingRating=0; this.pendingRouteTags=[];
+    document.getElementById('rate-note').value='';
+    document.querySelectorAll('#star-row .star-btn').forEach(s=>s.classList.remove('on'));
+    document.querySelectorAll('.rtag-btn').forEach(b=>b.classList.remove('on'));
     this.openOverlay('rate-overlay');
   },
 
   setRating(n) {
-    this.pendingRating = n;
-    document.querySelectorAll('#star-row .star-btn').forEach((s,i) => s.classList.toggle('on', i < n));
+    this.pendingRating=n;
+    document.querySelectorAll('#star-row .star-btn').forEach((s,i)=>s.classList.toggle('on',i<n));
   },
 
-  toggleRouteTag(el, tag) {
+  toggleRouteTag(el,tag) {
     el.classList.toggle('on');
     if (el.classList.contains('on')) this.pendingRouteTags.push(tag);
-    else this.pendingRouteTags = this.pendingRouteTags.filter(t => t !== tag);
+    else this.pendingRouteTags=this.pendingRouteTags.filter(t=>t!==tag);
   },
 
   saveRating() {
-    const note = document.getElementById('rate-note').value.trim();
-    const ride = this.rides.find(r => r.id === this.pendingRateId);
-    if (ride) {
-      ride.rating = this.pendingRating;
-      ride.note = note;
-      ride.routeTags = [...this.pendingRouteTags];
-      this.saveRides();
-    }
+    const note=document.getElementById('rate-note').value.trim();
+    const ride=this.rides.find(r=>r.id===this.pendingRateId);
+    if (ride){ride.rating=this.pendingRating;ride.note=note;ride.routeTags=[...this.pendingRouteTags];this.saveRides();}
     this.closeOverlay('rate-overlay');
     this.viewRide(this.pendingRateId);
   },
 
-  // ---- Landmark ----
   openLandmarkModal() {
-    this.selectedTag = null; this.photoData = null;
-    document.getElementById('lm-note').value = '';
-    document.getElementById('photo-input').value = '';
-    const pa = document.getElementById('photo-area');
-    const prev = pa.querySelector('img');
-    if (prev) prev.remove();
-    pa.querySelector('.ph-icon').style.display = '';
-    pa.querySelector('.ph-text').style.display = '';
-    document.querySelectorAll('.tag-btn').forEach(b => b.classList.remove('on'));
+    this.selectedTag=null; this.photoData=null;
+    document.getElementById('lm-note').value='';
+    document.getElementById('photo-input').value='';
+    const pa=document.getElementById('photo-area');
+    const prev=pa.querySelector('img'); if(prev)prev.remove();
+    pa.querySelector('.ph-icon').style.display='';
+    pa.querySelector('.ph-text').style.display='';
+    document.querySelectorAll('.tag-btn').forEach(b=>b.classList.remove('on'));
     this.openOverlay('lm-overlay');
   },
 
-  toggleTag(el, tag) {
-    document.querySelectorAll('.tag-btn').forEach(b => b.classList.remove('on'));
-    if (this.selectedTag === tag) { this.selectedTag = null; }
-    else { el.classList.add('on'); this.selectedTag = tag; }
+  toggleTag(el,tag) {
+    document.querySelectorAll('.tag-btn').forEach(b=>b.classList.remove('on'));
+    if (this.selectedTag===tag){this.selectedTag=null;}
+    else{el.classList.add('on');this.selectedTag=tag;}
   },
 
   onPhotoChange(input) {
-    const file = input.files[0]; if (!file) return;
-    const reader = new FileReader();
-    reader.onload = e => {
-      const img = new Image();
-      img.onload = () => {
-        const MAX = 900; let w = img.width, h = img.height;
-        if (w > MAX || h > MAX) {
-          if (w > h) { h = Math.round(h*MAX/w); w = MAX; }
-          else       { w = Math.round(w*MAX/h); h = MAX; }
-        }
-        const c = document.createElement('canvas'); c.width=w; c.height=h;
+    const file=input.files[0]; if(!file)return;
+    const reader=new FileReader();
+    reader.onload=e=>{
+      const img=new Image();
+      img.onload=()=>{
+        const MAX=900;let w=img.width,h=img.height;
+        if(w>MAX||h>MAX){if(w>h){h=Math.round(h*MAX/w);w=MAX;}else{w=Math.round(w*MAX/h);h=MAX;}}
+        const c=document.createElement('canvas');c.width=w;c.height=h;
         c.getContext('2d').drawImage(img,0,0,w,h);
-        this.photoData = c.toDataURL('image/jpeg',.75);
-        const pa = document.getElementById('photo-area');
-        pa.querySelector('.ph-icon').style.display = 'none';
-        pa.querySelector('.ph-text').style.display = 'none';
-        const preview = document.createElement('img'); preview.src = this.photoData;
-        pa.appendChild(preview);
+        this.photoData=c.toDataURL('image/jpeg',.75);
+        const pa=document.getElementById('photo-area');
+        pa.querySelector('.ph-icon').style.display='none';
+        pa.querySelector('.ph-text').style.display='none';
+        const pv=document.createElement('img');pv.src=this.photoData;pa.appendChild(pv);
       };
-      img.src = e.target.result;
+      img.src=e.target.result;
     };
     reader.readAsDataURL(file);
   },
 
   saveLandmark() {
-    if (!this.activeRide) return;
-    const note = document.getElementById('lm-note').value.trim();
-    const pt = this.activeRide.points.at(-1);
-    const lm = { id:Date.now(), time:Date.now(), lat:pt?.lat??null, lng:pt?.lng??null, tag:this.selectedTag, note, photo:this.photoData };
+    if (!this.activeRide)return;
+    const note=document.getElementById('lm-note').value.trim();
+    const pt=this.activeRide.points.at(-1);
+    const lm={id:Date.now(),time:Date.now(),lat:pt?.lat??null,lng:pt?.lng??null,tag:this.selectedTag,note,photo:this.photoData};
     this.activeRide.landmarks.push(lm);
-    if (lm.lat && this.trackMap) {
-      const icon = L.divIcon({ className:'', iconSize:[26,26], iconAnchor:[13,13],
-        html:`<div style="width:26px;height:26px;background:#38bdf8;border:2px solid white;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:14px;box-shadow:0 2px 8px rgba(0,0,0,.5)">${this.tagEmoji(lm.tag)}</div>` });
+    if (lm.lat&&this.trackMap) {
+      const icon=L.divIcon({className:'',iconSize:[24,24],iconAnchor:[12,12],
+        html:`<div style="width:24px;height:24px;background:#32ade6;border:2px solid white;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:13px;box-shadow:0 2px 6px rgba(0,0,0,.5)">${this.tagEmoji(lm.tag)}</div>`});
       L.marker([lm.lat,lm.lng],{icon}).bindPopup(lm.note||lm.tag||'地標').addTo(this.trackMap);
     }
     this.closeOverlay('lm-overlay');
-    this.toast('地標已儲存 ✓');
+    this.toast('地標已儲存');
   },
 
-  // ---- View Ride ----
   viewRide(id) {
-    const ride = this.rides.find(r => r.id === id); if (!ride) return;
-    this.viewingId = id;
-    document.getElementById('detail-title').textContent = ride.name;
-    document.getElementById('d-dist').textContent = (ride.distance||0).toFixed(1);
-    document.getElementById('d-lm').textContent   = ride.landmarks.length;
-    document.getElementById('d-dur').textContent  = this.fmtDuration((ride.endTime||Date.now())-ride.startTime);
+    const ride=this.rides.find(r=>r.id===id); if(!ride)return;
+    this.viewingId=id;
+    document.getElementById('detail-title').textContent=ride.name;
+    document.getElementById('d-dist').textContent=(ride.distance||0).toFixed(1);
+    document.getElementById('d-lm').textContent=ride.landmarks.length;
+    document.getElementById('d-dur').textContent=this.fmtDuration((ride.endTime||Date.now())-ride.startTime);
 
-    let h = '<div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:16px">';
-    if (ride.weather) h += `<span style="font-size:13px;color:var(--dim)">${ride.weather.icon} ${ride.weather.temp}°C</span>`;
-    if (ride.rating > 0) h += `<span style="font-size:14px;color:var(--orange);letter-spacing:-1px">${'★'.repeat(ride.rating)}${'☆'.repeat(5-ride.rating)}</span>`;
-    (ride.routeTags||[]).forEach(t => { h += `<span style="font-size:11px;font-weight:700;padding:3px 9px;border-radius:100px;background:var(--bg3);color:var(--dim);border:1px solid var(--border)">${t}</span>`; });
-    h += '</div>';
-    if (ride.note) h += `<div style="font-size:14px;color:var(--dim);line-height:1.6;margin-bottom:20px;padding:12px;background:var(--bg2);border-radius:10px;border:1px solid var(--border)">${this.esc(ride.note)}</div>`;
-    document.getElementById('detail-header').innerHTML = h;
+    let h='<div style="display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin-bottom:12px">';
+    if (ride.weather) h+=`<span style="font-size:12px;color:var(--dim)">${ride.weather.icon} ${ride.weather.temp}°C</span>`;
+    if (ride.rating>0) h+=`<span style="font-size:13px;color:var(--orange);letter-spacing:-1px">${'★'.repeat(ride.rating)}${'☆'.repeat(5-ride.rating)}</span>`;
+    (ride.routeTags||[]).forEach(t=>{h+=`<span style="font-size:10px;font-weight:700;padding:2px 8px;border-radius:100px;background:var(--bg3);color:var(--dim);border:0.5px solid var(--border)">${t}</span>`;});
+    h+='</div>';
+    if (ride.note) h+=`<div style="font-size:13px;color:var(--dim);line-height:1.6;margin-bottom:14px;padding:10px 12px;background:var(--bg2);border-radius:8px">${this.esc(ride.note)}</div>`;
+    document.getElementById('detail-header').innerHTML=h;
 
-    const lmList = document.getElementById('detail-lm-list');
-    if (!ride.landmarks.length) {
-      lmList.innerHTML = '<div class="empty-state" style="padding:20px 0"><div class="ei">📍</div><p>這段路線沒有地標記錄</p></div>';
-    } else {
-      lmList.innerHTML = ride.landmarks.map(lm => {
-        const thumb = lm.photo ? `<img class="lm-thumb" src="${lm.photo}" loading="lazy">` : `<div class="lm-thumb icon-thumb">${this.tagEmoji(lm.tag)}</div>`;
+    const lmList=document.getElementById('detail-lm-list');
+    lmList.innerHTML=!ride.landmarks.length
+      ?'<div class="empty-state" style="padding:16px 0"><div class="ei">📍</div><p>沒有地標記錄</p></div>'
+      :ride.landmarks.map(lm=>{
+        const thumb=lm.photo?`<img class="lm-thumb" src="${lm.photo}" loading="lazy">`:`<div class="lm-thumb icon-thumb">${this.tagEmoji(lm.tag)}</div>`;
         return `<div class="lm-item">${thumb}<div>${lm.tag?`<span class="tag-chip">${lm.tag}</span><br>`:''}${lm.note?`<div class="lm-note">${this.esc(lm.note)}</div>`:''}<div class="lm-time">${new Date(lm.time).toLocaleTimeString('zh-TW',{hour:'2-digit',minute:'2-digit'})}</div></div></div>`;
       }).join('');
-    }
 
     this.showScreen('detail-screen');
-    setTimeout(() => {
-      if (this.detailMap) { this.detailMap.remove(); this.detailMap = null; }
-      this.detailMap = L.map('leaflet-detail',{zoomControl:false,attributionControl:false});
+    setTimeout(()=>{
+      if (this.detailMap){this.detailMap.remove();this.detailMap=null;}
+      this.detailMap=L.map('leaflet-detail',{zoomControl:false,attributionControl:false});
       L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19}).addTo(this.detailMap);
-      const pts = ride.points;
-      if (pts.length > 1) {
-        const lls = pts.map(p=>[p.lat,p.lng]);
-        L.polyline(lls,{color:'#f97316',weight:5,opacity:.9}).addTo(this.detailMap);
-        const mkr = c => L.divIcon({className:'',iconSize:[13,13],iconAnchor:[6.5,6.5],html:`<div style="width:13px;height:13px;background:${c};border:2px solid white;border-radius:50%"></div>`});
-        L.marker(lls[0],{icon:mkr('#22c55e')}).addTo(this.detailMap);
-        L.marker(lls[lls.length-1],{icon:mkr('#ef4444')}).addTo(this.detailMap);
-        this.detailMap.fitBounds(L.latLngBounds(lls),{padding:[24,24]});
+      const pts=ride.points;
+      if (pts.length>1) {
+        const lls=pts.map(p=>[p.lat,p.lng]);
+        L.polyline(lls,{color:'#ff375f',weight:4,opacity:.9}).addTo(this.detailMap);
+        const mkr=c=>L.divIcon({className:'',iconSize:[11,11],iconAnchor:[5.5,5.5],html:`<div style="width:11px;height:11px;background:${c};border:2px solid white;border-radius:50%"></div>`});
+        L.marker(lls[0],{icon:mkr('#30d158')}).addTo(this.detailMap);
+        L.marker(lls[lls.length-1],{icon:mkr('#ff375f')}).addTo(this.detailMap);
+        this.detailMap.fitBounds(L.latLngBounds(lls),{padding:[20,20]});
       } else {
-        this.detailMap.setView(pts[0]?[pts[0].lat,pts[0].lng]:[25.0375,121.5637], pts[0]?15:11);
+        this.detailMap.setView(pts[0]?[pts[0].lat,pts[0].lng]:[25.0375,121.5637],pts[0]?15:11);
       }
-      ride.landmarks.forEach(lm => {
-        if (lm.lat==null) return;
-        const icon = L.divIcon({className:'',iconSize:[24,24],iconAnchor:[12,12],
-          html:`<div style="width:24px;height:24px;background:#38bdf8;border:2px solid white;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12px;box-shadow:0 2px 6px rgba(0,0,0,.4)">${this.tagEmoji(lm.tag)}</div>`});
+      ride.landmarks.forEach(lm=>{
+        if(lm.lat==null)return;
+        const icon=L.divIcon({className:'',iconSize:[22,22],iconAnchor:[11,11],
+          html:`<div style="width:22px;height:22px;background:#32ade6;border:2px solid white;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px">${this.tagEmoji(lm.tag)}</div>`});
         L.marker([lm.lat,lm.lng],{icon}).bindPopup(lm.note||lm.tag||'地標').addTo(this.detailMap);
       });
-    }, 150);
+    },150);
   },
 
-  // ---- Delete / Share ----
   deleteRide() {
-    if (!confirm('確定要刪除這段路線嗎？')) return;
-    this.rides = this.rides.filter(r => r.id !== this.viewingId);
+    if(!confirm('確定要刪除這段路線嗎？'))return;
+    this.rides=this.rides.filter(r=>r.id!==this.viewingId);
     this.saveRides(); this.goHome();
   },
 
   shareRide() {
-    const ride = this.rides.find(r => r.id === this.viewingId); if (!ride) return;
-    const lines = [
+    const ride=this.rides.find(r=>r.id===this.viewingId); if(!ride)return;
+    const lines=[
       `🏍 ${ride.name}`,
-      ride.rating ? '⭐'.repeat(ride.rating) : '',
+      ride.rating?'⭐'.repeat(ride.rating):'',
       `📅 ${new Date(ride.date).toLocaleDateString('zh-TW')}`,
-      ride.weather ? `${ride.weather.icon} ${ride.weather.temp}°C` : '',
+      ride.weather?`${ride.weather.icon} ${ride.weather.temp}°C`:'',
       `📏 ${(ride.distance||0).toFixed(1)} 公里`,
       `⏱ ${this.fmtDuration((ride.endTime||Date.now())-ride.startTime)}`,
-      `📍 ${ride.landmarks.length} 個地標`,
-      ride.note ? `\n💬 ${ride.note}` : '',
+      ride.note?`\n💬 ${ride.note}`:'',
       `\n用「重機日誌」記錄的路線`,
     ].filter(Boolean).join('\n');
-    if (navigator.share) navigator.share({title:ride.name,text:lines}).catch(()=>{});
-    else navigator.clipboard?.writeText(lines).then(()=>this.toast('路線資訊已複製 ✓')).catch(()=>this.toast('分享功能不支援'));
+    if(navigator.share)navigator.share({title:ride.name,text:lines}).catch(()=>{});
+    else navigator.clipboard?.writeText(lines).then(()=>this.toast('已複製')).catch(()=>this.toast('分享不支援'));
   },
 
-  // ---- Filter ----
-  setFilter(el, tag) {
-    this.activeFilter = tag;
-    document.querySelectorAll('.filter-chip').forEach(c => c.classList.remove('active'));
-    el.classList.add('active');
-    this.renderHomeList();
+  setFilter(el,tag) {
+    this.activeFilter=tag;
+    document.querySelectorAll('.filter-chip').forEach(c=>c.classList.remove('active'));
+    el.classList.add('active'); this.renderHomeList();
   },
 
-  // ---- Home list ----
   renderHomeList() {
-    const el = document.getElementById('rides-list');
-    const filtered = this.activeFilter ? this.rides.filter(r => (r.routeTags||[]).includes(this.activeFilter)) : this.rides;
+    const el=document.getElementById('rides-list');
+    const filtered=this.activeFilter?this.rides.filter(r=>(r.routeTags||[]).includes(this.activeFilter)):this.rides;
     if (!filtered.length) {
-      el.innerHTML = !this.rides.length
-        ? `<div class="empty-state"><div class="ei">🗺️</div><p>還沒有騎乘記錄<br>按上方按鈕開始第一段路線！</p></div>`
-        : `<div class="empty-state"><div class="ei">🔍</div><p>沒有符合「${this.activeFilter}」的路線</p></div>`;
+      el.innerHTML=!this.rides.length
+        ?'<div class="empty-state"><div class="ei">🗺️</div><p>還沒有騎乘記錄<br>按上方按鈕開始第一段路線</p></div>'
+        :`<div class="empty-state"><div class="ei">🔍</div><p>沒有「${this.activeFilter}」的路線</p></div>`;
       return;
     }
-    el.innerHTML = filtered.map(r => {
-      const dur = Math.floor(((r.endTime||r.startTime)-r.startTime)/60000);
-      const stars   = r.rating > 0 ? `<div class="meta-item ride-stars">${'★'.repeat(r.rating)}${'☆'.repeat(5-r.rating)}</div>` : '';
-      const weather = r.weather ? `<div class="meta-item">${r.weather.icon} ${r.weather.temp}°</div>` : '';
-      const rtags   = (r.routeTags||[]).length ? `<div class="ride-rtags">${r.routeTags.map(t=>`<span class="rtag-chip">${t}</span>`).join('')}</div>` : '';
+    el.innerHTML=filtered.map(r=>{
+      const dur=Math.floor(((r.endTime||r.startTime)-r.startTime)/60000);
+      const durStr=dur<60?dur+'分':Math.floor(dur/60)+'h'+(dur%60?dur%60+'m':'');
+      const stars=r.rating>0?`<span class="ride-stars">${'★'.repeat(r.rating)}</span>`:'';
+      const weather=r.weather?`<span class="ride-date">${r.weather.icon} ${r.weather.temp}°</span>`:'';
+      const rtags=(r.routeTags||[]).length?`<div class="ride-rtags">${r.routeTags.map(t=>`<span class="rtag-chip">${t}</span>`).join('')}</div>`:'';
       return `<div class="ride-card" onclick="App.viewRide(${r.id})">
-        <div class="ride-card-thumb">${this.buildThumb(r)}</div>
-        <div class="ride-card-body">
-          <div class="rname">${this.esc(r.name)}</div>
-          <div class="ride-card-meta">
-            <div class="meta-item">📅 <b>${new Date(r.date).toLocaleDateString('zh-TW',{month:'short',day:'numeric'})}</b></div>
-            <div class="meta-item">📏 <b>${(r.distance||0).toFixed(1)} km</b></div>
-            <div class="meta-item">⏱ <b>${dur<60?dur+'分':Math.floor(dur/60)+'h'+dur%60+'m'}</b></div>
-            ${r.landmarks.length?`<div class="meta-item">📍 <b>${r.landmarks.length}</b></div>`:''}
-            ${weather}${stars}
-          </div>${rtags}
+        <div class="ride-thumb">${this.buildThumb(r)}</div>
+        <div class="ride-body">
+          <div class="ride-name">${this.esc(r.name)}</div>
+          <div class="ride-metrics">
+            <span class="rm rm-red">${(r.distance||0).toFixed(1)}km</span>
+            <span class="rm rm-green">${durStr}</span>
+            ${r.landmarks.length?`<span class="rm rm-cyan">${r.landmarks.length}站`:''}
+          </div>
+          <div class="ride-sub">
+            <span class="ride-date">${new Date(r.date).toLocaleDateString('zh-TW',{month:'numeric',day:'numeric'})}</span>
+            ${weather}${stars}${rtags}
+          </div>
         </div>
+        <div class="ride-chevron">›</div>
       </div>`;
     }).join('');
   },
 
-  // ---- Stats ----
   renderStats() {
-    const totalKm = this.rides.reduce((s,r)=>s+(r.distance||0),0);
-    const totalH  = this.rides.reduce((s,r)=>s+((r.endTime||r.startTime)-r.startTime),0)/3600000;
-    document.getElementById('stats-summary').innerHTML = `
-      <div class="summary-card"><div class="sv">${this.rides.length}</div><div class="sl">次騎乘</div></div>
-      <div class="summary-card"><div class="sv">${totalKm.toFixed(0)}</div><div class="sl">公里</div></div>
-      <div class="summary-card"><div class="sv">${totalH.toFixed(1)}</div><div class="sl">小時</div></div>`;
+    const totalKm=this.rides.reduce((s,r)=>s+(r.distance||0),0);
+    const totalH=this.rides.reduce((s,r)=>s+((r.endTime||r.startTime)-r.startTime),0)/3600000;
+    document.getElementById('stats-hero').innerHTML=`
+      <div class="stats-hero-col sh-red"><div class="shc-label">距離</div><div><span class="shc-val">${totalKm.toFixed(0)}</span><span class="shc-unit">km</span></div></div>
+      <div class="stats-hero-col sh-green"><div class="shc-label">時數</div><div><span class="shc-val">${totalH.toFixed(1)}</span><span class="shc-unit">hr</span></div></div>
+      <div class="stats-hero-col sh-cyan"><div class="shc-label">次數</div><div><span class="shc-val">${this.rides.length}</span><span class="shc-unit">次</span></div></div>`;
 
-    const now = new Date();
-    const months = Array.from({length:6},(_,i)=>{
-      const d = new Date(now.getFullYear(), now.getMonth()-5+i, 1);
-      return { year:d.getFullYear(), month:d.getMonth(), label:`${d.getMonth()+1}月` };
-    });
-    const counts = months.map(m => this.rides.filter(r=>{ const d=new Date(r.date); return d.getFullYear()===m.year&&d.getMonth()===m.month; }).length);
-    const maxC = Math.max(...counts,1);
-    document.getElementById('month-chart').innerHTML = months.map((m,i)=>`
+    const now=new Date();
+    const months=Array.from({length:6},(_,i)=>{const d=new Date(now.getFullYear(),now.getMonth()-5+i,1);return{year:d.getFullYear(),month:d.getMonth(),label:`${d.getMonth()+1}月`};});
+    const counts=months.map(m=>this.rides.filter(r=>{const d=new Date(r.date);return d.getFullYear()===m.year&&d.getMonth()===m.month;}).length);
+    const maxC=Math.max(...counts,1);
+    document.getElementById('month-chart').innerHTML=months.map((m,i)=>`
       <div class="month-row">
         <div class="month-label">${m.label}</div>
         <div class="month-bar-wrap"><div class="month-bar" style="width:${(counts[i]/maxC*100).toFixed(0)}%"></div></div>
         <div class="month-count">${counts[i]}</div>
       </div>`).join('');
 
-    const tagCounts = {};
+    const tagCounts={};
     this.rides.forEach(r=>(r.routeTags||[]).forEach(t=>{tagCounts[t]=(tagCounts[t]||0)+1;}));
-    const tagEntries = Object.entries(tagCounts).sort((a,b)=>b[1]-a[1]);
-    const maxT = tagEntries[0]?.[1]||1;
-    document.getElementById('tag-breakdown').innerHTML = tagEntries.length
-      ? tagEntries.map(([t,c])=>`<div class="tag-row"><div class="tag-row-label">${t}</div><div class="tag-row-bar-wrap"><div class="tag-row-bar" style="width:${(c/maxT*100).toFixed(0)}%"></div></div><div class="tag-row-count">${c}</div></div>`).join('')
-      : '<div class="empty-state" style="padding:16px 0"><p style="font-size:13px">結束路線後選擇類型即可顯示</p></div>';
+    const tagEntries=Object.entries(tagCounts).sort((a,b)=>b[1]-a[1]);
+    const maxT=tagEntries[0]?.[1]||1;
+    document.getElementById('tag-breakdown').innerHTML=tagEntries.length
+      ?tagEntries.map(([t,c])=>`<div class="tag-row"><div class="tag-row-label">${t}</div><div class="tag-row-bar-wrap"><div class="tag-row-bar" style="width:${(c/maxT*100).toFixed(0)}%"></div></div><div class="tag-row-count">${c}</div></div>`).join('')
+      :'<p style="font-size:12px;color:var(--dim)">結束路線後選擇類型即可顯示</p>';
 
-    const longest = this.rides.reduce((b,r)=>(r.distance||0)>(b?.distance||0)?r:b,null);
-    const rated   = this.rides.filter(r=>r.rating>0);
-    const avgRat  = rated.length ? (rated.reduce((s,r)=>s+r.rating,0)/rated.length).toFixed(1) : '—';
-    const totalLm = this.rides.reduce((s,r)=>s+r.landmarks.length,0);
-    const mostLm  = this.rides.reduce((b,r)=>r.landmarks.length>(b?.landmarks.length||0)?r:b,null);
-    document.getElementById('top-stats').innerHTML = `
-      <div class="top-stat-card"><div class="ts-label">最長路線</div><div class="ts-val">${longest?(longest.distance||0).toFixed(1)+' km':'—'}</div><div class="ts-sub">${longest?this.esc(longest.name):''}</div></div>
-      <div class="top-stat-card"><div class="ts-label">平均評分</div><div class="ts-val">${avgRat==='—'?'—':'★ '+avgRat}</div><div class="ts-sub">${rated.length} 筆評分</div></div>
-      <div class="top-stat-card"><div class="ts-label">總地標數</div><div class="ts-val">${totalLm}</div><div class="ts-sub">個地標</div></div>
-      <div class="top-stat-card"><div class="ts-label">最多地標</div><div class="ts-val">${mostLm?mostLm.landmarks.length+' 個':'—'}</div><div class="ts-sub">${mostLm?this.esc(mostLm.name):''}</div></div>`;
+    const longest=this.rides.reduce((b,r)=>(r.distance||0)>(b?.distance||0)?r:b,null);
+    const rated=this.rides.filter(r=>r.rating>0);
+    const avgRat=rated.length?(rated.reduce((s,r)=>s+r.rating,0)/rated.length).toFixed(1):'—';
+    const totalLm=this.rides.reduce((s,r)=>s+r.landmarks.length,0);
+    const mostLm=this.rides.reduce((b,r)=>r.landmarks.length>(b?.landmarks.length||0)?r:b,null);
+    document.getElementById('top-stats').innerHTML=`
+      <div class="top-stat-card"><div class="ts-label">最長路線</div><div class="ts-val" style="color:var(--red)">${longest?(longest.distance||0).toFixed(1)+' km':'—'}</div><div class="ts-sub">${longest?this.esc(longest.name):''}</div></div>
+      <div class="top-stat-card"><div class="ts-label">平均評分</div><div class="ts-val" style="color:var(--orange)">${avgRat==='—'?'—':'★ '+avgRat}</div><div class="ts-sub">${rated.length} 筆</div></div>
+      <div class="top-stat-card"><div class="ts-label">總地標數</div><div class="ts-val" style="color:var(--cyan)">${totalLm}</div><div class="ts-sub">個</div></div>
+      <div class="top-stat-card"><div class="ts-label">最多地標</div><div class="ts-val" style="color:var(--green)">${mostLm?mostLm.landmarks.length+' 個':'—'}</div><div class="ts-sub">${mostLm?this.esc(mostLm.name):''}</div></div>`;
   },
 
-  // ---- Album ----
   renderAlbum() {
-    const photos = [];
-    this.rides.forEach(r => r.landmarks.forEach(lm => { if (lm.photo) photos.push({photo:lm.photo,tag:lm.tag,rideName:r.name}); }));
-    this._albumPhotos = photos;
-    const el = document.getElementById('album-grid');
-    if (!photos.length) {
-      el.innerHTML = '<div class="empty-state" style="grid-column:span 2;padding:48px 0"><div class="ei">📷</div><p>新增帶照片的地標<br>就會出現在這裡</p></div>';
-      return;
-    }
-    el.innerHTML = photos.map((p,i)=>`
-      <div class="album-item" onclick="App.openLightbox(${i})">
-        <img src="${p.photo}" loading="lazy">
-        <div class="album-meta">${p.tag?`<div class="album-tag">${p.tag}</div>`:''}
-          <div>${this.esc(p.rideName)}</div></div>
-      </div>`).join('');
+    const photos=[];
+    this.rides.forEach(r=>r.landmarks.forEach(lm=>{if(lm.photo)photos.push({photo:lm.photo,tag:lm.tag,rideName:r.name});}));
+    this._albumPhotos=photos;
+    const el=document.getElementById('album-grid');
+    if (!photos.length){el.innerHTML='<div class="empty-state" style="grid-column:span 2;padding:48px 0"><div class="ei">📷</div><p>新增帶照片的地標<br>就會出現在這裡</p></div>';return;}
+    el.innerHTML=photos.map((p,i)=>`<div class="album-item" onclick="App.openLightbox(${i})"><img src="${p.photo}" loading="lazy"><div class="album-meta">${p.tag?`<div class="album-tag">${p.tag}</div>`:''}<div>${this.esc(p.rideName)}</div></div></div>`).join('');
   },
 
   openLightbox(i) {
-    const p = this._albumPhotos[i];
-    document.getElementById('lb-img').src  = p.photo;
-    document.getElementById('lb-tag').textContent  = p.tag||'';
-    document.getElementById('lb-ride').textContent = p.rideName;
+    const p=this._albumPhotos[i];
+    document.getElementById('lb-img').src=p.photo;
+    document.getElementById('lb-tag').textContent=p.tag||'';
+    document.getElementById('lb-ride').textContent=p.rideName;
     document.getElementById('lightbox').classList.add('open');
   },
+  closeLightbox(){document.getElementById('lightbox').classList.remove('open');},
 
-  closeLightbox() { document.getElementById('lightbox').classList.remove('open'); },
-
-  // ---- Weather ----
-  async fetchWeather(lat, lng) {
+  async fetchWeather(lat,lng) {
     try {
-      const r = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat.toFixed(4)}&longitude=${lng.toFixed(4)}&current=weathercode,temperature_2m`);
-      const d = await r.json();
-      return { code:d.current.weathercode, temp:Math.round(d.current.temperature_2m), icon:this.weatherIcon(d.current.weathercode) };
-    } catch(e) { return null; }
+      const r=await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat.toFixed(4)}&longitude=${lng.toFixed(4)}&current=weathercode,temperature_2m`);
+      const d=await r.json();
+      return{code:d.current.weathercode,temp:Math.round(d.current.temperature_2m),icon:this.weatherIcon(d.current.weathercode)};
+    }catch(e){return null;}
   },
+  weatherIcon(c){if(c===0)return'☀️';if(c<=2)return'🌤';if(c===3)return'☁️';if(c<=48)return'🌫';if(c<=67)return'🌧';if(c<=77)return'🌨';if(c<=82)return'🌦';return'⛈';},
 
-  weatherIcon(c) {
-    if (c===0) return '☀️'; if (c<=2) return '🌤'; if (c===3) return '☁️';
-    if (c<=48) return '🌫'; if (c<=67) return '🌧'; if (c<=77) return '🌨';
-    if (c<=82) return '🌦'; return '⛈';
-  },
-
-  // ---- Thumb ----
   buildThumb(ride) {
-    if (!ride.points||ride.points.length<2) return '<div class="no-map">🛣️</div>';
-    const W=400,H=110,pad=8;
-    const lats=ride.points.map(p=>p.lat), lngs=ride.points.map(p=>p.lng);
-    const minLat=Math.min(...lats),maxLat=Math.max(...lats);
-    const minLng=Math.min(...lngs),maxLng=Math.max(...lngs);
-    const sx=(W-pad*2)/(maxLng-minLng||1), sy=(H-pad*2)/(maxLat-minLat||1);
+    if(!ride.points||ride.points.length<2)return'<div class="no-map">🛣️</div>';
+    const W=144,H=52,pad=5;
+    const lats=ride.points.map(p=>p.lat),lngs=ride.points.map(p=>p.lng);
+    const minLat=Math.min(...lats),maxLat=Math.max(...lats),minLng=Math.min(...lngs),maxLng=Math.max(...lngs);
+    const sx=(W-pad*2)/(maxLng-minLng||1),sy=(H-pad*2)/(maxLat-minLat||1);
     const pts=ride.points.map(p=>`${(pad+(p.lng-minLng)*sx).toFixed(1)},${(H-pad-(p.lat-minLat)*sy).toFixed(1)}`).join(' ');
-    return `<svg width="${W}" height="${H}" style="width:100%;height:100%;display:block" viewBox="0 0 ${W} ${H}"><rect width="${W}" height="${H}" fill="#1f2937"/><polyline points="${pts}" fill="none" stroke="#f97316" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" opacity=".9"/></svg>`;
+    return `<svg width="${W}" height="${H}" style="width:100%;height:100%;display:block" viewBox="0 0 ${W} ${H}"><rect width="${W}" height="${H}" fill="#141414"/><polyline points="${pts}" fill="none" stroke="#ff375f" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" opacity=".9"/></svg>`;
   },
 
-  // ---- Overlays ----
-  openOverlay(id)  { document.getElementById(id).classList.add('open'); },
-  closeOverlay(id) { document.getElementById(id).classList.remove('open'); },
-  overlayClick(e,id) { if (e.target===document.getElementById(id)) this.closeOverlay(id); },
+  openOverlay(id){document.getElementById(id).classList.add('open');},
+  closeOverlay(id){document.getElementById(id).classList.remove('open');},
+  overlayClick(e,id){if(e.target===document.getElementById(id))this.closeOverlay(id);},
 
-  // ---- Toast ----
-  toast(msg,ms=2200) {
+  toast(msg,ms=2000){
     const el=document.getElementById('toast');
-    el.textContent=msg; el.classList.add('show');
-    clearTimeout(this._tt);
-    this._tt=setTimeout(()=>el.classList.remove('show'),ms);
+    el.textContent=msg;el.classList.add('show');
+    clearTimeout(this._tt);this._tt=setTimeout(()=>el.classList.remove('show'),ms);
   },
 
-  // ---- Utils ----
-  haversine(a,b,c,d) {
-    const R=6371,dL=(c-a)*Math.PI/180,dG=(d-b)*Math.PI/180;
-    const x=Math.sin(dL/2)**2+Math.cos(a*Math.PI/180)*Math.cos(c*Math.PI/180)*Math.sin(dG/2)**2;
-    return R*2*Math.atan2(Math.sqrt(x),Math.sqrt(1-x));
-  },
-  fmtDuration(ms) { const m=Math.floor(ms/60000),h=Math.floor(m/60); return h>0?`${h}h${m%60}m`:`${m}分`; },
-  tagEmoji(tag)   { return {'美食':'🍜','風景':'🏔','加油站':'⛽','休息點':'☕','危險路段':'⚠️','推薦路段':'⭐'}[tag]||'📍'; },
-  esc(str)        { const d=document.createElement('div'); d.appendChild(document.createTextNode(str)); return d.innerHTML; },
-  saveRides()     { try { localStorage.setItem('mj_rides',JSON.stringify(this.rides)); } catch(e) { this.toast('儲存空間不足'); } },
+  haversine(a,b,c,d){const R=6371,dL=(c-a)*Math.PI/180,dG=(d-b)*Math.PI/180,x=Math.sin(dL/2)**2+Math.cos(a*Math.PI/180)*Math.cos(c*Math.PI/180)*Math.sin(dG/2)**2;return R*2*Math.atan2(Math.sqrt(x),Math.sqrt(1-x));},
+  fmtDuration(ms){const m=Math.floor(ms/60000),h=Math.floor(m/60);return h>0?`${h}h${m%60}m`:`${m}分`;},
+  tagEmoji(tag){return{'美食':'🍜','風景':'🏔','加油站':'⛽','休息點':'☕','危險路段':'⚠️','推薦路段':'⭐'}[tag]||'📍';},
+  esc(str){const d=document.createElement('div');d.appendChild(document.createTextNode(str));return d.innerHTML;},
+  saveRides(){try{localStorage.setItem('mj_rides',JSON.stringify(this.rides));}catch(e){this.toast('儲存空間不足');}},
 };
-
 App.init();
 </script>
 </body>
