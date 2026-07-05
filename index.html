@@ -1,0 +1,970 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black">
+<meta name="theme-color" content="#111827">
+<meta name="description" content="記錄你的重機路線和地標">
+<title>重機日誌</title>
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icon.svg">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+
+<style>
+:root {
+  --bg:      #111827;
+  --bg2:     #1f2937;
+  --bg3:     #374151;
+  --orange:  #f97316;
+  --orange2: #ea580c;
+  --cyan:    #38bdf8;
+  --green:   #22c55e;
+  --red:     #ef4444;
+  --text:    #f9fafb;
+  --dim:     #9ca3af;
+  --border:  #374151;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+
+html, body {
+  height: 100%; height: 100dvh;
+  overflow: hidden;
+  background: var(--bg);
+  color: var(--text);
+  font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Segoe UI', sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ===== SCREENS ===== */
+.screen {
+  position: fixed; inset: 0;
+  display: flex; flex-direction: column;
+  background: var(--bg);
+  transform: translateX(100%);
+  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  z-index: 10;
+}
+.screen.active  { transform: translateX(0); z-index: 20; }
+.screen.behind  { transform: translateX(-25%); z-index: 10; }
+
+/* ===== TOP BAR ===== */
+.topbar {
+  display: flex; align-items: center; gap: 10px;
+  padding: 12px 16px;
+  padding-top: max(16px, env(safe-area-inset-top));
+  background: var(--bg);
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+.topbar h1  { font-size: 18px; font-weight: 700; flex: 1; }
+.icon-btn {
+  width: 38px; height: 38px;
+  border: none; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer; font-size: 16px; flex-shrink: 0;
+}
+.icon-btn.gray  { background: var(--bg2); color: var(--text); border: 1px solid var(--border); }
+.icon-btn.red   { background: rgba(239,68,68,.15); color: var(--red); border: 1px solid rgba(239,68,68,.3); }
+
+/* ===== HOME SCREEN ===== */
+#home-screen .scroll {
+  flex: 1; overflow-y: auto;
+  padding: 20px 16px;
+  padding-bottom: max(32px, env(safe-area-inset-bottom));
+}
+.hero {
+  text-align: center;
+  padding: 28px 0 32px;
+}
+.hero-icon { font-size: 56px; line-height: 1; }
+.hero h2   { font-size: 26px; font-weight: 800; margin-top: 10px; }
+.hero p    { font-size: 14px; color: var(--dim); margin-top: 4px; }
+
+.start-btn {
+  width: 100%; padding: 18px;
+  background: var(--orange); color: white;
+  border: none; border-radius: 16px;
+  font-size: 18px; font-weight: 700;
+  cursor: pointer; margin-bottom: 28px;
+  display: flex; align-items: center; justify-content: center; gap: 10px;
+  box-shadow: 0 4px 20px rgba(249,115,22,.4);
+  transition: opacity .15s, transform .15s;
+}
+.start-btn:active { opacity: .85; transform: scale(.97); }
+
+.section-label {
+  font-size: 11px; font-weight: 700; letter-spacing: .08em;
+  text-transform: uppercase; color: var(--dim);
+  margin-bottom: 12px;
+}
+
+.empty-state {
+  text-align: center; padding: 48px 0; color: var(--dim);
+}
+.empty-state .ei { font-size: 44px; margin-bottom: 10px; }
+.empty-state p   { font-size: 14px; line-height: 1.7; }
+
+/* ===== RIDE CARD ===== */
+.ride-card {
+  background: var(--bg2); border-radius: 16px;
+  overflow: hidden; margin-bottom: 12px;
+  cursor: pointer; border: 1px solid var(--border);
+  transition: border-color .15s;
+}
+.ride-card:active { border-color: var(--orange); }
+.ride-card-thumb {
+  height: 110px; background: var(--bg3);
+  position: relative; overflow: hidden;
+}
+.ride-card-thumb canvas { width: 100%; height: 100%; }
+.ride-card-thumb .no-map {
+  position: absolute; inset: 0;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 36px; color: var(--dim);
+}
+.ride-card-body { padding: 14px; }
+.ride-card-body .rname { font-size: 16px; font-weight: 700; margin-bottom: 8px; }
+.ride-card-meta { display: flex; flex-wrap: wrap; gap: 12px; }
+.meta-item { font-size: 13px; color: var(--dim); }
+.meta-item b { color: var(--text); font-weight: 600; }
+
+/* ===== TRACKING SCREEN ===== */
+#track-screen { z-index: 30; }
+#track-map-wrap { flex: 1; position: relative; overflow: hidden; }
+#leaflet-track  { width: 100%; height: 100%; }
+
+.stats-overlay {
+  position: absolute; top: 12px; left: 12px; right: 12px;
+  background: rgba(17,24,39,.88);
+  backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
+  border: 1px solid rgba(255,255,255,.12);
+  border-radius: 18px; padding: 16px 0;
+  display: flex; z-index: 500;
+}
+.stat-col {
+  flex: 1; text-align: center;
+  border-right: 1px solid rgba(255,255,255,.1);
+}
+.stat-col:last-child { border-right: none; }
+.stat-val {
+  font-size: 30px; font-weight: 800;
+  font-variant-numeric: tabular-nums; line-height: 1;
+}
+.stat-unit { font-size: 11px; color: var(--dim); margin-top: 3px; }
+.rec-dot {
+  display: inline-block;
+  width: 8px; height: 8px; border-radius: 50%;
+  background: var(--green); margin-right: 4px;
+  animation: blink 1.4s infinite;
+}
+@keyframes blink { 0%,100%{opacity:1} 50%{opacity:.2} }
+
+.gps-badge {
+  position: absolute; bottom: 12px; right: 12px;
+  background: rgba(17,24,39,.85);
+  backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
+  border: 1px solid rgba(255,255,255,.1);
+  border-radius: 100px; padding: 6px 12px;
+  font-size: 12px; display: flex; align-items: center; gap: 6px;
+  z-index: 500;
+}
+.gps-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--dim); flex-shrink: 0; }
+
+.track-footer {
+  padding: 14px 16px;
+  padding-bottom: max(14px, env(safe-area-inset-bottom));
+  background: var(--bg); border-top: 1px solid var(--border);
+  display: flex; gap: 12px; flex-shrink: 0;
+}
+.lm-btn {
+  flex: 1; padding: 16px;
+  background: var(--bg2); color: var(--text);
+  border: 1px solid var(--border); border-radius: 14px;
+  font-size: 15px; font-weight: 600; cursor: pointer;
+  display: flex; align-items: center; justify-content: center; gap: 8px;
+  transition: background .15s;
+}
+.lm-btn:active { background: var(--bg3); }
+.stop-btn {
+  flex: 1; padding: 16px;
+  background: var(--red); color: white;
+  border: none; border-radius: 14px;
+  font-size: 15px; font-weight: 700; cursor: pointer;
+  display: flex; align-items: center; justify-content: center; gap: 8px;
+  box-shadow: 0 4px 14px rgba(239,68,68,.4);
+  transition: opacity .15s, transform .15s;
+}
+.stop-btn:active { opacity: .85; transform: scale(.97); }
+
+/* ===== DETAIL SCREEN ===== */
+#detail-screen .map-half { height: 38vh; flex-shrink: 0; position: relative; }
+#detail-screen .map-half .leaflet-container { width: 100%; height: 100%; }
+#detail-screen .info-scroll {
+  flex: 1; overflow-y: auto;
+  padding: 20px 16px;
+  padding-bottom: max(24px, env(safe-area-inset-bottom));
+}
+.stats-row { display: flex; gap: 10px; margin-bottom: 24px; }
+.stat-card {
+  flex: 1; background: var(--bg2);
+  border: 1px solid var(--border); border-radius: 12px;
+  padding: 14px; text-align: center;
+}
+.stat-card .sv { font-size: 22px; font-weight: 800; color: var(--orange); }
+.stat-card .sl { font-size: 11px; color: var(--dim); margin-top: 2px; }
+
+.lm-item {
+  display: flex; gap: 12px; padding: 14px 0;
+  border-bottom: 1px solid var(--border); align-items: flex-start;
+}
+.lm-item:last-child { border-bottom: none; }
+.lm-thumb {
+  width: 68px; height: 68px; flex-shrink: 0;
+  border-radius: 10px; object-fit: cover;
+  background: var(--bg3);
+}
+.lm-thumb.icon-thumb {
+  display: flex; align-items: center; justify-content: center; font-size: 28px;
+}
+.tag-chip {
+  display: inline-block; font-size: 11px; font-weight: 700;
+  padding: 3px 9px; border-radius: 100px;
+  background: var(--orange); color: white; margin-bottom: 5px;
+}
+.lm-note { font-size: 14px; color: var(--text); line-height: 1.5; }
+.lm-time { font-size: 12px; color: var(--dim); margin-top: 4px; }
+
+/* ===== MODALS ===== */
+.overlay {
+  position: fixed; inset: 0;
+  background: rgba(0,0,0,.72); z-index: 200;
+  display: flex; align-items: flex-end;
+  opacity: 0; pointer-events: none;
+  transition: opacity .25s;
+}
+.overlay.open { opacity: 1; pointer-events: all; }
+.sheet {
+  width: 100%; background: var(--bg2);
+  border-radius: 24px 24px 0 0;
+  padding: 16px 20px max(20px, env(safe-area-inset-bottom));
+  transform: translateY(100%);
+  transition: transform .3s cubic-bezier(0.4,0,0.2,1);
+}
+.overlay.open .sheet { transform: translateY(0); }
+.sheet-handle {
+  width: 36px; height: 4px; background: var(--bg3);
+  border-radius: 2px; margin: 0 auto 20px;
+}
+.sheet h3 { font-size: 18px; font-weight: 700; margin-bottom: 18px; }
+
+/* Photo area */
+.photo-area {
+  width: 100%; height: 150px;
+  background: var(--bg3); border: 2px dashed var(--border);
+  border-radius: 14px; position: relative; overflow: hidden;
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  gap: 6px; color: var(--dim); margin-bottom: 14px; cursor: pointer;
+}
+.photo-area img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+.photo-area .ph-icon { font-size: 30px; }
+.photo-area .ph-text { font-size: 13px; }
+.photo-area input[type=file] { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
+
+/* Tags */
+.tags-wrap { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 14px; }
+.tag-btn {
+  padding: 8px 14px; border-radius: 100px;
+  border: 1px solid var(--border); background: var(--bg3);
+  color: var(--dim); font-size: 13px; cursor: pointer;
+  transition: all .15s; user-select: none;
+}
+.tag-btn.on { background: var(--orange); border-color: var(--orange); color: white; }
+
+/* Note textarea */
+.note-ta {
+  width: 100%; background: var(--bg3);
+  border: 1px solid var(--border); border-radius: 12px;
+  color: var(--text); padding: 13px; font-size: 15px;
+  resize: none; font-family: inherit; outline: none;
+  margin-bottom: 14px; transition: border-color .15s;
+}
+.note-ta:focus { border-color: var(--orange); }
+
+/* Buttons */
+.btn-primary {
+  width: 100%; padding: 16px;
+  background: var(--orange); color: white;
+  border: none; border-radius: 14px;
+  font-size: 16px; font-weight: 700; cursor: pointer;
+  transition: opacity .15s, transform .15s;
+}
+.btn-primary:active { opacity: .85; transform: scale(.97); }
+.confirm-row { display: flex; gap: 10px; margin-top: 6px; }
+.btn-ghost {
+  flex: 1; padding: 14px;
+  background: var(--bg3); color: var(--text);
+  border: none; border-radius: 12px;
+  font-size: 15px; font-weight: 600; cursor: pointer;
+}
+.btn-red {
+  flex: 1; padding: 14px;
+  background: var(--red); color: white;
+  border: none; border-radius: 12px;
+  font-size: 15px; font-weight: 700; cursor: pointer;
+}
+.confirm-msg { font-size: 14px; color: var(--dim); margin-bottom: 16px; }
+
+/* Toast */
+.toast {
+  position: fixed; bottom: 80px; left: 50%; transform: translateX(-50%) translateY(20px);
+  background: rgba(17,24,39,.95); color: white;
+  border: 1px solid rgba(255,255,255,.12);
+  padding: 10px 20px; border-radius: 100px;
+  font-size: 14px; font-weight: 500; z-index: 999;
+  opacity: 0; transition: opacity .25s, transform .25s;
+  white-space: nowrap; pointer-events: none;
+}
+.toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+/* scrollbar hidden */
+::-webkit-scrollbar { width: 0; }
+</style>
+</head>
+<body>
+
+<!-- ============================
+     SCREEN: HOME
+============================= -->
+<div id="home-screen" class="screen active">
+  <div class="topbar">
+    <h1>🏍 重機日誌</h1>
+  </div>
+  <div class="scroll">
+    <div class="hero">
+      <div class="hero-icon">🏍</div>
+      <h2>準備出發了嗎？</h2>
+      <p>記錄每一段精彩路線</p>
+    </div>
+
+    <button class="start-btn" id="start-btn" onclick="App.startRide()">
+      <span>▶</span> 開始新路線
+    </button>
+
+    <div class="section-label">騎乘記錄</div>
+    <div id="rides-list"></div>
+  </div>
+</div>
+
+<!-- ============================
+     SCREEN: TRACKING
+============================= -->
+<div id="track-screen" class="screen">
+  <div id="track-map-wrap">
+    <div id="leaflet-track"></div>
+
+    <div class="stats-overlay">
+      <div class="stat-col">
+        <div class="stat-val" id="sv-speed">0</div>
+        <div class="stat-unit">km/h</div>
+      </div>
+      <div class="stat-col">
+        <div class="stat-val" id="sv-dist">0.0</div>
+        <div class="stat-unit">公里</div>
+      </div>
+      <div class="stat-col">
+        <div class="stat-val" id="sv-time">00:00</div>
+        <div class="stat-unit"><span class="rec-dot"></span>記錄中</div>
+      </div>
+    </div>
+
+    <div class="gps-badge">
+      <span class="gps-dot" id="gps-dot"></span>
+      <span id="gps-text">取得 GPS 中…</span>
+    </div>
+  </div>
+
+  <div class="track-footer">
+    <button class="lm-btn" onclick="App.openLandmarkModal()">
+      📍 新增地標
+    </button>
+    <button class="stop-btn" onclick="App.openStopModal()">
+      ⏹ 停止
+    </button>
+  </div>
+</div>
+
+<!-- ============================
+     SCREEN: RIDE DETAIL
+============================= -->
+<div id="detail-screen" class="screen">
+  <div class="topbar">
+    <button class="icon-btn gray" onclick="App.goHome()">←</button>
+    <h1 id="detail-title">路線</h1>
+    <button class="icon-btn gray" onclick="App.shareRide()" title="分享" style="font-size:18px;">↑</button>
+    <button class="icon-btn red" onclick="App.deleteRide()" title="刪除">✕</button>
+  </div>
+  <div class="map-half">
+    <div id="leaflet-detail" style="width:100%;height:100%;"></div>
+  </div>
+  <div class="info-scroll">
+    <div class="stats-row">
+      <div class="stat-card"><div class="sv" id="d-dist">-</div><div class="sl">公里</div></div>
+      <div class="stat-card"><div class="sv" id="d-dur">-</div><div class="sl">時長</div></div>
+      <div class="stat-card"><div class="sv" id="d-lm">-</div><div class="sl">地標</div></div>
+    </div>
+    <div class="section-label">地標記錄</div>
+    <div id="detail-lm-list"></div>
+  </div>
+</div>
+
+<!-- ============================
+     MODAL: Add Landmark
+============================= -->
+<div class="overlay" id="lm-overlay" onclick="App.overlayClick(event, 'lm-overlay')">
+  <div class="sheet">
+    <div class="sheet-handle"></div>
+    <h3>📍 新增地標</h3>
+
+    <div class="photo-area" id="photo-area">
+      <input type="file" accept="image/*" capture="environment"
+             id="photo-input" onchange="App.onPhotoChange(this)">
+      <div class="ph-icon">📷</div>
+      <div class="ph-text">拍照 / 選圖片</div>
+    </div>
+
+    <div class="tags-wrap">
+      <div class="tag-btn" onclick="App.toggleTag(this,'美食')">🍜 美食</div>
+      <div class="tag-btn" onclick="App.toggleTag(this,'風景')">🏔 風景</div>
+      <div class="tag-btn" onclick="App.toggleTag(this,'加油站')">⛽ 加油站</div>
+      <div class="tag-btn" onclick="App.toggleTag(this,'休息點')">☕ 休息點</div>
+      <div class="tag-btn" onclick="App.toggleTag(this,'危險路段')">⚠️ 危險</div>
+      <div class="tag-btn" onclick="App.toggleTag(this,'推薦路段')">⭐ 推薦</div>
+    </div>
+
+    <textarea class="note-ta" id="lm-note" rows="3"
+              placeholder="寫下你的想法、路況、推薦原因…"></textarea>
+
+    <button class="btn-primary" onclick="App.saveLandmark()">儲存地標</button>
+  </div>
+</div>
+
+<!-- ============================
+     MODAL: Stop Confirm
+============================= -->
+<div class="overlay" id="stop-overlay" onclick="App.overlayClick(event, 'stop-overlay')">
+  <div class="sheet">
+    <div class="sheet-handle"></div>
+    <h3>結束這段路線？</h3>
+    <p class="confirm-msg">目前已騎 <span id="confirm-dist">0.0</span> 公里，記錄將自動儲存。</p>
+    <div class="confirm-row">
+      <button class="btn-ghost" onclick="App.closeOverlay('stop-overlay')">繼續騎</button>
+      <button class="btn-red" onclick="App.stopRide()">結束路線</button>
+    </div>
+  </div>
+</div>
+
+<!-- Toast -->
+<div class="toast" id="toast"></div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+/* ================================================
+   重機日誌 App
+================================================ */
+const App = {
+
+  // ---------- State ----------
+  rides: [],
+  activeRide: null,
+  watchId: null,
+  timer: null,
+  trackMap: null,
+  trackLine: null,
+  trackDot: null,
+  detailMap: null,
+  selectedTag: null,
+  photoData: null,
+  viewingId: null,
+
+  // ---------- Boot ----------
+  init() {
+    try {
+      this.rides = JSON.parse(localStorage.getItem('mj_rides') || '[]');
+    } catch(e) { this.rides = []; }
+    this.renderHomeList();
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('sw.js').catch(() => {});
+    }
+  },
+
+  // ---------- Screen nav ----------
+  showScreen(id) {
+    document.querySelectorAll('.screen').forEach(s => {
+      s.classList.remove('active', 'behind');
+    });
+    // slide previous screens behind
+    const prev = document.querySelector('.screen.active');
+    if (prev && prev.id !== id) prev.classList.add('behind');
+    document.getElementById(id).classList.add('active');
+  },
+
+  goHome() {
+    if (this.detailMap) { this.detailMap.remove(); this.detailMap = null; }
+    this.showScreen('home-screen');
+    this.renderHomeList();
+  },
+
+  // ---------- Start Ride ----------
+  startRide() {
+    this.activeRide = {
+      id: Date.now(),
+      name: '路線 ' + (this.rides.length + 1),
+      date: Date.now(),
+      startTime: Date.now(),
+      endTime: null,
+      points: [],
+      landmarks: [],
+      distance: 0,
+    };
+
+    this.showScreen('track-screen');
+
+    setTimeout(() => this.initTrackMap(), 150);
+  },
+
+  initTrackMap() {
+    if (!this.trackMap) {
+      this.trackMap = L.map('leaflet-track', {
+        zoomControl: false,
+        attributionControl: false,
+      });
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        maxZoom: 19,
+      }).addTo(this.trackMap);
+    }
+
+    // reset line & dot
+    if (this.trackLine) { this.trackLine.remove(); this.trackLine = null; }
+    if (this.trackDot)  { this.trackDot.remove();  this.trackDot = null; }
+
+    this.trackLine = L.polyline([], {
+      color: '#f97316', weight: 5, opacity: .9,
+    }).addTo(this.trackMap);
+
+    this.startGPS();
+    this.startTimer();
+  },
+
+  // ---------- GPS ----------
+  startGPS() {
+    if (!navigator.geolocation) {
+      this.setGPSStatus('error', 'GPS 不支援');
+      return;
+    }
+    this.setGPSStatus('waiting', '取得 GPS 中…');
+
+    this.watchId = navigator.geolocation.watchPosition(
+      pos => this.onPosition(pos),
+      err => {
+        this.setGPSStatus('error', 'GPS 錯誤');
+        console.warn('GPS', err);
+      },
+      { enableHighAccuracy: true, maximumAge: 3000, timeout: 15000 }
+    );
+  },
+
+  onPosition(pos) {
+    const { latitude: lat, longitude: lng, speed, accuracy } = pos.coords;
+
+    this.setGPSStatus('ok', `精確度 ±${Math.round(accuracy)}m`);
+
+    const lastPt = this.activeRide.points.at(-1);
+    this.activeRide.points.push({ lat, lng, t: Date.now() });
+
+    if (lastPt) {
+      this.activeRide.distance += this.haversine(lastPt.lat, lastPt.lng, lat, lng);
+    }
+
+    // update polyline
+    const ll = [lat, lng];
+    this.trackLine.addLatLng(ll);
+
+    // update dot
+    const dotHtml = '<div style="width:16px;height:16px;background:#f97316;border:3px solid white;border-radius:50%;box-shadow:0 2px 8px rgba(0,0,0,.5)"></div>';
+    if (!this.trackDot) {
+      this.trackDot = L.marker(ll, {
+        icon: L.divIcon({ className:'', html: dotHtml, iconSize:[16,16], iconAnchor:[8,8] })
+      }).addTo(this.trackMap);
+      this.trackMap.setView(ll, 15);
+    } else {
+      this.trackDot.setLatLng(ll);
+      this.trackMap.panTo(ll, { animate: true, duration: .5 });
+    }
+
+    // stats
+    document.getElementById('sv-speed').textContent =
+      speed != null ? Math.round(speed * 3.6) : '—';
+    document.getElementById('sv-dist').textContent =
+      this.activeRide.distance.toFixed(1);
+  },
+
+  setGPSStatus(state, text) {
+    const dot = document.getElementById('gps-dot');
+    dot.style.background = state === 'ok' ? '#22c55e' : state === 'error' ? '#ef4444' : '#9ca3af';
+    document.getElementById('gps-text').textContent = text;
+  },
+
+  startTimer() {
+    const t0 = Date.now();
+    clearInterval(this.timer);
+    this.timer = setInterval(() => {
+      const ms = Date.now() - t0;
+      const m = Math.floor(ms / 60000);
+      const s = Math.floor((ms % 60000) / 1000);
+      document.getElementById('sv-time').textContent =
+        String(m).padStart(2,'0') + ':' + String(s).padStart(2,'0');
+    }, 1000);
+  },
+
+  // ---------- Stop Ride ----------
+  openStopModal() {
+    document.getElementById('confirm-dist').textContent =
+      (this.activeRide?.distance || 0).toFixed(1);
+    this.openOverlay('stop-overlay');
+  },
+
+  stopRide() {
+    this.closeOverlay('stop-overlay');
+
+    if (this.watchId != null) {
+      navigator.geolocation.clearWatch(this.watchId);
+      this.watchId = null;
+    }
+    clearInterval(this.timer);
+
+    this.activeRide.endTime = Date.now();
+
+    // clean up track markers so they don't bleed
+    if (this.trackDot) { this.trackDot.remove(); this.trackDot = null; }
+
+    this.rides.unshift(this.activeRide);
+    this.saveRides();
+
+    const saved = this.activeRide;
+    this.activeRide = null;
+
+    this.viewRide(saved.id);
+  },
+
+  // ---------- Landmark ----------
+  openLandmarkModal() {
+    this.selectedTag = null;
+    this.photoData = null;
+    document.getElementById('lm-note').value = '';
+    document.getElementById('photo-input').value = '';
+
+    const pa = document.getElementById('photo-area');
+    const prev = pa.querySelector('img');
+    if (prev) prev.remove();
+    pa.querySelector('.ph-icon').style.display = '';
+    pa.querySelector('.ph-text').style.display = '';
+
+    document.querySelectorAll('.tag-btn').forEach(b => b.classList.remove('on'));
+    this.openOverlay('lm-overlay');
+  },
+
+  toggleTag(el, tag) {
+    document.querySelectorAll('.tag-btn').forEach(b => b.classList.remove('on'));
+    if (this.selectedTag === tag) {
+      this.selectedTag = null;
+    } else {
+      el.classList.add('on');
+      this.selectedTag = tag;
+    }
+  },
+
+  onPhotoChange(input) {
+    const file = input.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = e => {
+      const img = new Image();
+      img.onload = () => {
+        const MAX = 900;
+        let w = img.width, h = img.height;
+        if (w > MAX || h > MAX) {
+          if (w > h) { h = Math.round(h * MAX / w); w = MAX; }
+          else       { w = Math.round(w * MAX / h); h = MAX; }
+        }
+        const c = document.createElement('canvas');
+        c.width = w; c.height = h;
+        c.getContext('2d').drawImage(img, 0, 0, w, h);
+        this.photoData = c.toDataURL('image/jpeg', .75);
+
+        const pa = document.getElementById('photo-area');
+        pa.querySelector('.ph-icon').style.display = 'none';
+        pa.querySelector('.ph-text').style.display = 'none';
+        const preview = document.createElement('img');
+        preview.src = this.photoData;
+        pa.appendChild(preview);
+      };
+      img.src = e.target.result;
+    };
+    reader.readAsDataURL(file);
+  },
+
+  saveLandmark() {
+    if (!this.activeRide) return;
+    const note = document.getElementById('lm-note').value.trim();
+    const pt = this.activeRide.points.at(-1);
+
+    const lm = {
+      id: Date.now(),
+      time: Date.now(),
+      lat: pt?.lat ?? null,
+      lng: pt?.lng ?? null,
+      tag: this.selectedTag,
+      note,
+      photo: this.photoData,
+    };
+
+    this.activeRide.landmarks.push(lm);
+
+    if (lm.lat && this.trackMap) {
+      const emoji = this.tagEmoji(lm.tag);
+      const icon = L.divIcon({
+        className: '',
+        html: `<div style="width:26px;height:26px;background:#38bdf8;border:2px solid white;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:14px;box-shadow:0 2px 8px rgba(0,0,0,.5)">${emoji}</div>`,
+        iconSize: [26,26], iconAnchor: [13,13],
+      });
+      L.marker([lm.lat, lm.lng], { icon })
+        .bindPopup(lm.note || lm.tag || '地標')
+        .addTo(this.trackMap);
+    }
+
+    this.closeOverlay('lm-overlay');
+    this.toast('地標已儲存 ✓');
+  },
+
+  // ---------- View Ride ----------
+  viewRide(id) {
+    const ride = this.rides.find(r => r.id === id);
+    if (!ride) return;
+    this.viewingId = id;
+
+    document.getElementById('detail-title').textContent = ride.name;
+    document.getElementById('d-dist').textContent = (ride.distance || 0).toFixed(1);
+    document.getElementById('d-lm').textContent   = ride.landmarks.length;
+
+    const dur = (ride.endTime || Date.now()) - ride.startTime;
+    document.getElementById('d-dur').textContent  = this.fmtDuration(dur);
+
+    // Landmarks list
+    const lmList = document.getElementById('detail-lm-list');
+    if (ride.landmarks.length === 0) {
+      lmList.innerHTML = '<div class="empty-state" style="padding:20px 0"><div class="ei">📍</div><p>這段路線沒有地標記錄</p></div>';
+    } else {
+      lmList.innerHTML = ride.landmarks.map(lm => {
+        const thumb = lm.photo
+          ? `<img class="lm-thumb" src="${lm.photo}" loading="lazy">`
+          : `<div class="lm-thumb icon-thumb">${this.tagEmoji(lm.tag)}</div>`;
+        const tag  = lm.tag  ? `<span class="tag-chip">${lm.tag}</span><br>` : '';
+        const note = lm.note ? `<div class="lm-note">${this.esc(lm.note)}</div>` : '';
+        const time = `<div class="lm-time">${new Date(lm.time).toLocaleTimeString('zh-TW',{hour:'2-digit',minute:'2-digit'})}</div>`;
+        return `<div class="lm-item">${thumb}<div>${tag}${note}${time}</div></div>`;
+      }).join('');
+    }
+
+    this.showScreen('detail-screen');
+
+    // Build detail map
+    setTimeout(() => {
+      if (this.detailMap) { this.detailMap.remove(); this.detailMap = null; }
+
+      this.detailMap = L.map('leaflet-detail', {
+        zoomControl: false, attributionControl: false,
+      });
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        maxZoom: 19,
+      }).addTo(this.detailMap);
+
+      const pts = ride.points;
+      if (pts.length > 1) {
+        const lls = pts.map(p => [p.lat, p.lng]);
+        L.polyline(lls, { color: '#f97316', weight: 5, opacity: .9 }).addTo(this.detailMap);
+
+        const mkr = (color) => L.divIcon({
+          className: '',
+          html: `<div style="width:13px;height:13px;background:${color};border:2px solid white;border-radius:50%;"></div>`,
+          iconSize:[13,13], iconAnchor:[6.5,6.5],
+        });
+        L.marker(lls[0],         { icon: mkr('#22c55e') }).addTo(this.detailMap);
+        L.marker(lls[lls.length-1],{ icon: mkr('#ef4444') }).addTo(this.detailMap);
+        this.detailMap.fitBounds(L.latLngBounds(lls), { padding: [24, 24] });
+      } else if (pts.length === 1) {
+        this.detailMap.setView([pts[0].lat, pts[0].lng], 15);
+      } else {
+        this.detailMap.setView([25.0375, 121.5637], 11); // 台灣
+      }
+
+      ride.landmarks.forEach(lm => {
+        if (lm.lat == null) return;
+        const emoji = this.tagEmoji(lm.tag);
+        const icon = L.divIcon({
+          className: '',
+          html: `<div style="width:24px;height:24px;background:#38bdf8;border:2px solid white;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12px;box-shadow:0 2px 6px rgba(0,0,0,.4)">${emoji}</div>`,
+          iconSize:[24,24], iconAnchor:[12,12],
+        });
+        L.marker([lm.lat, lm.lng], { icon })
+          .bindPopup(lm.note || lm.tag || '地標')
+          .addTo(this.detailMap);
+      });
+    }, 150);
+  },
+
+  // ---------- Delete / Share ----------
+  deleteRide() {
+    if (!confirm('確定要刪除這段路線嗎？')) return;
+    this.rides = this.rides.filter(r => r.id !== this.viewingId);
+    this.saveRides();
+    this.goHome();
+  },
+
+  shareRide() {
+    const ride = this.rides.find(r => r.id === this.viewingId);
+    if (!ride) return;
+    const dur  = (ride.endTime || Date.now()) - ride.startTime;
+    const text = [
+      `🏍 ${ride.name}`,
+      `📅 ${new Date(ride.date).toLocaleDateString('zh-TW')}`,
+      `📏 ${(ride.distance||0).toFixed(1)} 公里`,
+      `⏱ ${this.fmtDuration(dur)}`,
+      `📍 ${ride.landmarks.length} 個地標`,
+      ``,
+      `用「重機日誌」記錄的路線`,
+    ].join('\n');
+
+    if (navigator.share) {
+      navigator.share({ title: ride.name, text }).catch(()=>{});
+    } else {
+      navigator.clipboard?.writeText(text)
+        .then(() => this.toast('路線資訊已複製 ✓'))
+        .catch(()  => this.toast('分享功能不支援'));
+    }
+  },
+
+  // ---------- Home list ----------
+  renderHomeList() {
+    const el = document.getElementById('rides-list');
+    if (this.rides.length === 0) {
+      el.innerHTML = `
+        <div class="empty-state">
+          <div class="ei">🗺️</div>
+          <p>還沒有騎乘記錄<br>按上方按鈕開始第一段路線！</p>
+        </div>`;
+      return;
+    }
+
+    el.innerHTML = this.rides.map(r => {
+      const date = new Date(r.date);
+      const dur  = Math.floor(((r.endTime || r.startTime) - r.startTime) / 60000);
+      const thumb = this.buildThumb(r);
+      return `
+        <div class="ride-card" onclick="App.viewRide(${r.id})">
+          <div class="ride-card-thumb">${thumb}</div>
+          <div class="ride-card-body">
+            <div class="rname">${this.esc(r.name)}</div>
+            <div class="ride-card-meta">
+              <div class="meta-item">📅 <b>${date.toLocaleDateString('zh-TW',{month:'short',day:'numeric'})}</b></div>
+              <div class="meta-item">📏 <b>${(r.distance||0).toFixed(1)} km</b></div>
+              <div class="meta-item">⏱ <b>${dur < 60 ? dur+'分' : Math.floor(dur/60)+'h'+dur%60+'m'}</b></div>
+              ${r.landmarks.length ? `<div class="meta-item">📍 <b>${r.landmarks.length}</b></div>` : ''}
+            </div>
+          </div>
+        </div>`;
+    }).join('');
+  },
+
+  buildThumb(ride) {
+    if (!ride.points || ride.points.length < 2) {
+      return '<div class="no-map">🛣️</div>';
+    }
+    // Draw route on a small canvas
+    const W = 400, H = 110;
+    const lats = ride.points.map(p => p.lat);
+    const lngs = ride.points.map(p => p.lng);
+    const minLat = Math.min(...lats), maxLat = Math.max(...lats);
+    const minLng = Math.min(...lngs), maxLng = Math.max(...lngs);
+    const pad = 8;
+    const scaleX = (W - pad*2) / (maxLng - minLng || 1);
+    const scaleY = (H - pad*2) / (maxLat - minLat || 1);
+    const toX = lng => pad + (lng - minLng) * scaleX;
+    const toY = lat => H - pad - (lat - minLat) * scaleY;
+
+    const pts = ride.points.map(p => `${toX(p.lng).toFixed(1)},${toY(p.lat).toFixed(1)}`).join(' ');
+    return `
+      <svg width="${W}" height="${H}" style="width:100%;height:100%;display:block;" viewBox="0 0 ${W} ${H}">
+        <rect width="${W}" height="${H}" fill="#1f2937"/>
+        <polyline points="${pts}" fill="none" stroke="#f97316" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" opacity=".9"/>
+      </svg>`;
+  },
+
+  // ---------- Overlays ----------
+  openOverlay(id)  { document.getElementById(id).classList.add('open');    },
+  closeOverlay(id) { document.getElementById(id).classList.remove('open'); },
+  overlayClick(e, id) {
+    if (e.target === document.getElementById(id)) this.closeOverlay(id);
+  },
+
+  // ---------- Toast ----------
+  toast(msg, ms = 2200) {
+    const el = document.getElementById('toast');
+    el.textContent = msg;
+    el.classList.add('show');
+    clearTimeout(this._toastTimer);
+    this._toastTimer = setTimeout(() => el.classList.remove('show'), ms);
+  },
+
+  // ---------- Utils ----------
+  haversine(lat1, lng1, lat2, lng2) {
+    const R = 6371;
+    const dLat = (lat2 - lat1) * Math.PI / 180;
+    const dLng = (lng2 - lng1) * Math.PI / 180;
+    const a = Math.sin(dLat/2)**2
+            + Math.cos(lat1*Math.PI/180) * Math.cos(lat2*Math.PI/180) * Math.sin(dLng/2)**2;
+    return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+  },
+
+  fmtDuration(ms) {
+    const m = Math.floor(ms / 60000);
+    const h = Math.floor(m / 60);
+    return h > 0 ? `${h}h${m%60}m` : `${m}分`;
+  },
+
+  tagEmoji(tag) {
+    return { '美食':'🍜','風景':'🏔','加油站':'⛽','休息點':'☕','危險路段':'⚠️','推薦路段':'⭐' }[tag] || '📍';
+  },
+
+  esc(str) {
+    const d = document.createElement('div');
+    d.appendChild(document.createTextNode(str));
+    return d.innerHTML;
+  },
+
+  saveRides() {
+    try {
+      localStorage.setItem('mj_rides', JSON.stringify(this.rides));
+    } catch(e) {
+      this.toast('儲存空間不足，請刪除舊記錄');
+    }
+  },
+};
+
+App.init();
+</script>
+</body>
+</html>
